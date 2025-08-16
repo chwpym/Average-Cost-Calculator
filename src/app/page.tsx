@@ -492,8 +492,12 @@ interface BatchPriceItem {
   
     const generatePdf = () => {
         const doc = new jsPDF();
-    
+        
+        doc.setFontSize(18);
+        doc.text("Precificação de Lote", 14, 20);
+
         autoTable(doc, {
+            startY: 30,
             head: [['Descrição', 'Qtde', 'Custo Un. (R$)', 'Custo Total (R$)', 'Margem (%)', 'Venda Un. (R$)', 'Venda Total (R$)']],
             body: items.map(item => {
                 const quantity = parseFloat(item.quantity) || 0;
@@ -518,12 +522,8 @@ interface BatchPriceItem {
                     { content: 'Média (%):', styles: { halign: 'right', fontStyle: 'bold' } },
                     { content: formatNumber(totals.averageMargin, 2, '%'), styles: { fontStyle: 'bold' } },
                     { content: formatCurrency(totals.totalValue), styles: { fontStyle: 'bold' } },
-                    ''
                 ]
             ],
-            didDrawPage: (data) => {
-                doc.text("Precificação de Lote", data.settings.margin.left, 15);
-            },
             headStyles: { fillColor: [63, 81, 181] },
             footStyles: { fillColor: [224, 224, 224], textColor: [0,0,0], fontStyle: 'bold' },
         });
@@ -662,3 +662,5 @@ interface BatchPriceItem {
       </div>
     );
   }
+
+    
