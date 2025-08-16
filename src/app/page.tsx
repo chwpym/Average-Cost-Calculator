@@ -7,10 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Trash2 } from "lucide-react";
+import { Trash2, PlusCircle, AlertCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 
 interface Purchase {
   quantity: string;
@@ -25,20 +25,23 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-const formatNumber = (value: number) => {
-  if (isNaN(value)) return "0";
-  return new Intl.NumberFormat("pt-BR").format(value);
-};
+const formatNumber = (value: number, minimumFractionDigits = 0) => {
+    if (isNaN(value)) return "0";
+    return new Intl.NumberFormat("pt-BR", {
+      minimumFractionDigits: minimumFractionDigits,
+      maximumFractionDigits: 2,
+    }).format(value);
+  };
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-4 sm:p-6 md:p-8">
-      <header className="w-full max-w-4xl flex justify-between items-center mb-8">
+      <header className="w-full max-w-6xl flex justify-between items-center mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-primary">Calculadoras Financeiras</h1>
         <ThemeToggle />
       </header>
 
-      <main className="w-full max-w-4xl">
+      <main className="w-full max-w-6xl">
         <Tabs defaultValue="average-price" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-8">
             <TabsTrigger value="average-price">Preço Médio</TabsTrigger>
@@ -53,7 +56,7 @@ export default function Home() {
         </Tabs>
       </main>
 
-      <footer className="w-full max-w-4xl mt-12 text-center text-muted-foreground text-sm">
+      <footer className="w-full max-w-6xl mt-12 text-center text-muted-foreground text-sm">
         <p>Feito com ❤️ para ajudar investidores.</p>
       </footer>
     </div>
@@ -216,10 +219,11 @@ function FinancialCalculators() {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="calculate-percent">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
             <TabsTrigger value="calculate-percent">Calcular %</TabsTrigger>
             <TabsTrigger value="sum-percent">Somar com %</TabsTrigger>
             <TabsTrigger value="calculate-sale">Calcular Venda</TabsTrigger>
+            <TabsTrigger value="batch-pricing">Precificação em Lote</TabsTrigger>
           </TabsList>
           <TabsContent value="calculate-percent">
             <CalculatePercentTab />
@@ -229,6 +233,9 @@ function FinancialCalculators() {
           </TabsContent>
           <TabsContent value="calculate-sale">
             <CalculateSaleTab />
+          </TabsContent>
+          <TabsContent value="batch-pricing">
+            <BatchPricingCalculator />
           </TabsContent>
         </Tabs>
       </CardContent>
@@ -399,3 +406,161 @@ function CalculateSaleTab() {
         </div>
     );
 }
+
+interface BatchPriceItem {
+    id: number;
+    description: string;
+    quantity: string;
+    cost: string;
+    margin: string;
+    price: string;
+  }
+  
+  function BatchPricingCalculator() {
+    const [items, setItems] = useState<BatchPriceItem[]>([
+      { id: 1, description: "", quantity: "1", cost: "", margin: "", price: "" },
+    ]);
+  
+    const handleItemChange = (id: number, field: keyof BatchPriceItem, value: string) => {
+      setItems(prevItems => {
+        const newItems = prevItems.map(item => {
+          if (item.id === id) {
+            const updatedItem = { ...item, [field]: value };
+            
+            const quantity = parseFloat(updatedItem.quantity) || 0;
+            const cost = parseFloat(updatedItem.cost) || 0;
+            let margin = parseFloat(updatedItem.margin) || 0;
+            let price = parseFloat(updatedItem.price) || 0;
+  
+            if (cost > 0) {
+              if (field === 'margin' || field === 'cost' || field === 'quantity') {
+                price = cost * (1 + margin / 100);
+                updatedItem.price = price > 0 ? price.toFixed(2) : "";
+              } else if (field === 'price') {
+                margin = price > 0 ? ((price / cost) - 1) * 100 : 0;
+                updatedItem.margin = margin > 0 ? margin.toFixed(2) : "";
+              }
+            } else {
+                updatedItem.price = "";
+                updatedItem.margin = "";
+            }
+            
+            return updatedItem;
+          }
+          return item;
+        });
+        return newItems;
+      });
+    };
+  
+    const addItem = () => {
+      setItems(prev => [
+        ...prev,
+        { id: Date.now(), description: "", quantity: "1", cost: "", margin: "", price: "" },
+      ]);
+    };
+  
+    const removeItem = (id: number) => {
+      setItems(prev => prev.filter(item => item.id !== id));
+    };
+  
+    const totalValue = useMemo(() => {
+        return items.reduce((acc, item) => {
+          const quantity = parseFloat(item.quantity) || 0;
+          const price = parseFloat(item.price) || 0;
+          return acc + (quantity * price);
+        }, 0);
+      }, [items]);
+  
+    return (
+      <div className="pt-4 space-y-4">
+        <div className="overflow-x-auto">
+            <Table>
+            <TableHeader>
+                <TableRow>
+                <TableHead className="w-[200px]">Descrição</TableHead>
+                <TableHead className="w-[100px]">Qtde</TableHead>
+                <TableHead className="w-[120px]">Custo (R$)</TableHead>
+                <TableHead className="w-[120px]">Margem (%)</TableHead>
+                <TableHead className="w-[120px]">Venda (R$)</TableHead>
+                <TableHead className="w-[120px]">Total (R$)</TableHead>
+                <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {items.map(item => {
+                    const quantity = parseFloat(item.quantity) || 0;
+                    const price = parseFloat(item.price) || 0;
+                    const total = quantity * price;
+                    return (
+                        <TableRow key={item.id}>
+                            <TableCell>
+                                <Input
+                                type="text"
+                                placeholder="Nome do produto"
+                                value={item.description}
+                                onChange={e => handleItemChange(item.id, 'description', e.target.value)}
+                                />
+                            </TableCell>
+                            <TableCell>
+                                <Input
+                                type="number"
+                                value={item.quantity}
+                                onChange={e => handleItemChange(item.id, 'quantity', e.target.value)}
+                                />
+                            </TableCell>
+                            <TableCell>
+                                <Input
+                                type="number"
+                                value={item.cost}
+                                onChange={e => handleItemChange(item.id, 'cost', e.target.value)}
+                                />
+                            </TableCell>
+                            <TableCell>
+                                <Input
+                                type="number"
+                                value={item.margin}
+                                onChange={e => handleItemChange(item.id, 'margin', e.target.value)}
+                                />
+                            </TableCell>
+                            <TableCell>
+                                <Input
+                                type="number"
+                                value={item.price}
+                                onChange={e => handleItemChange(item.id, 'price', e.target.value)}
+                                />
+                            </TableCell>
+                            <TableCell>
+                                <div className="w-full h-10 px-3 py-2 rounded-md border border-input bg-muted flex items-center text-sm">
+                                    {formatCurrency(total)}
+                                </div>
+                            </TableCell>
+                            <TableCell>
+                                <Button variant="ghost" size="icon" onClick={() => removeItem(item.id)} disabled={items.length <= 1}>
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                            </TableCell>
+                        </TableRow>
+                    );
+                })}
+            </TableBody>
+            <TableFooter>
+                <TableRow>
+                    <TableCell colSpan={5} className="text-right font-bold">Valor Total Geral:</TableCell>
+                    <TableCell className="font-bold">
+                        <div className="w-full h-10 px-3 py-2 rounded-md border border-input bg-muted flex items-center text-sm font-bold">
+                            {formatCurrency(totalValue)}
+                        </div>
+                    </TableCell>
+                    <TableCell></TableCell>
+                </TableRow>
+            </TableFooter>
+            </Table>
+        </div>
+        <Button onClick={addItem} variant="outline">
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Adicionar Item
+        </Button>
+      </div>
+    );
+  }
