@@ -7,10 +7,16 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Trash2, PlusCircle, AlertCircle } from "lucide-react";
+import { Trash2, PlusCircle, AlertCircle, Info } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface Purchase {
   quantity: string;
@@ -571,9 +577,18 @@ interface BatchPriceItem {
                         </div>
                     </TableCell>
                     <TableCell className="text-right font-bold">
-                        <div className="flex flex-col items-end">
-                            <span>Média da Margem:</span>
-                             <span className="text-xs font-normal text-muted-foreground">(sobre o custo total)</span>
+                        <div className="flex items-center justify-end space-x-2">
+                            <span>Média da Margem</span>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Info className="h-4 w-4 text-muted-foreground" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                    <p>sobre o custo total</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         </div>
                     </TableCell>
                      <TableCell className="font-bold">
