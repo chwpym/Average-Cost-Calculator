@@ -1,47 +1,68 @@
+import Link from 'next/link';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { Calculator, Landmark, Percent, ShoppingCart, Plus, Bot } from 'lucide-react';
+import { AppLayout } from '@/components/layout/AppLayout';
 
-"use client";
+const calculators = [
+  {
+    href: '/average-price',
+    icon: Calculator,
+    title: 'Preço Médio',
+    description: 'Calcule o preço médio de suas compras de ativos.',
+  },
+  {
+    href: '/batch-pricing',
+    icon: ShoppingCart,
+    title: 'Precificação em Lote',
+    description: 'Defina preços de venda para múltiplos produtos em lote.',
+  },
+  {
+    href: '/calculate-sale',
+    icon: Percent,
+    title: 'Calcular Venda',
+    description: 'Calcule o preço de venda a partir do custo e margem.',
+  },
+  {
+    href: '/calculate-percent',
+    icon: Bot,
+    title: 'Calcular Porcentagem',
+    description: 'Encontre o valor de uma porcentagem de um número.',
+  },
+  {
+    href: '/sum-percent',
+    icon: Plus,
+    title: 'Somar com Porcentagem',
+    description: 'Adicione uma porcentagem a um valor inicial.',
+  },
+];
 
-import { useState } from "react";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { SidebarNav } from "@/components/layout/SidebarNav";
-import { AveragePriceCalculator } from "@/components/calculators/AveragePriceCalculator";
-import { FinancialCalculators } from "@/components/calculators/FinancialCalculators";
-
-export type CalculatorView = 'average-price' | 'financial-calculators';
-
-export default function Home() {
-  const [activeView, setActiveView] = useState<CalculatorView>('average-price');
-
-  const renderContent = () => {
-    switch (activeView) {
-      case 'average-price':
-        return <AveragePriceCalculator />;
-      case 'financial-calculators':
-        return <FinancialCalculators />;
-      default:
-        return <AveragePriceCalculator />;
-    }
-  };
-
+export default function DashboardPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-4 sm:p-6 md:p-8">
-      <header className="w-full max-w-6xl flex justify-between items-center mb-8">
-        <div className="flex items-center gap-4">
-          <SidebarNav activeView={activeView} setActiveView={setActiveView} />
-          <h1 className="text-2xl sm:text-3xl font-bold text-primary">
-            {activeView === 'average-price' ? 'Calculadora de Preço Médio' : 'Calculadoras Financeiras'}
-          </h1>
-        </div>
-        <ThemeToggle />
-      </header>
-
-      <main className="w-full max-w-6xl">
-        {renderContent()}
-      </main>
-
-      <footer className="w-full max-w-6xl mt-12 text-center text-muted-foreground text-sm">
-        <p>Feito com ❤️ para ajudar investidores.</p>
-      </footer>
-    </div>
+    <AppLayout title="Dashboard de Calculadoras">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {calculators.map((calc) => (
+          <Card key={calc.href} className="flex flex-col">
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <calc.icon className="h-6 w-6 text-primary" />
+                    {calc.title}
+                  </CardTitle>
+                  <CardDescription className="mt-2">{calc.description}</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-grow flex items-end">
+              <Link href={calc.href} className="w-full">
+                <Button className="w-full">Acessar</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </AppLayout>
   );
 }
