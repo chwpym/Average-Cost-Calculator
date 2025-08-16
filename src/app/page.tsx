@@ -1,9 +1,8 @@
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ThemeToggle } from '@/components/theme-toggle';
-import { Calculator, Landmark, Percent, ShoppingCart, Plus, Bot } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { Calculator, ShoppingCart, Percent, Bot, Plus } from 'lucide-react';
 
 const calculators = [
   {
