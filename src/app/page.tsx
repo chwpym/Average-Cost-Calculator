@@ -1,32 +1,42 @@
 
 "use client";
 
+import { useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SidebarNav } from "@/components/layout/SidebarNav";
 import { AveragePriceCalculator } from "@/components/calculators/AveragePriceCalculator";
 import { FinancialCalculators } from "@/components/calculators/FinancialCalculators";
 
+export type CalculatorView = 'average-price' | 'financial-calculators';
+
 export default function Home() {
+  const [activeView, setActiveView] = useState<CalculatorView>('average-price');
+
+  const renderContent = () => {
+    switch (activeView) {
+      case 'average-price':
+        return <AveragePriceCalculator />;
+      case 'financial-calculators':
+        return <FinancialCalculators />;
+      default:
+        return <AveragePriceCalculator />;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-4 sm:p-6 md:p-8">
       <header className="w-full max-w-6xl flex justify-between items-center mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-primary">Calculadoras Financeiras</h1>
+        <div className="flex items-center gap-4">
+          <SidebarNav activeView={activeView} setActiveView={setActiveView} />
+          <h1 className="text-2xl sm:text-3xl font-bold text-primary">
+            {activeView === 'average-price' ? 'Calculadora de Preço Médio' : 'Calculadoras Financeiras'}
+          </h1>
+        </div>
         <ThemeToggle />
       </header>
 
       <main className="w-full max-w-6xl">
-        <Tabs defaultValue="average-price" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-8">
-            <TabsTrigger value="average-price">Preço Médio</TabsTrigger>
-            <TabsTrigger value="financial-calculators">Outras Calculadoras</TabsTrigger>
-          </TabsList>
-          <TabsContent value="average-price">
-            <AveragePriceCalculator />
-          </TabsContent>
-          <TabsContent value="financial-calculators">
-            <FinancialCalculators />
-          </TabsContent>
-        </Tabs>
+        {renderContent()}
       </main>
 
       <footer className="w-full max-w-6xl mt-12 text-center text-muted-foreground text-sm">
