@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface Purchase {
   quantity: string;
@@ -24,7 +27,7 @@ const formatCurrency = (value: number) => {
 const formatNumber = (value: number) => {
   if (isNaN(value)) return "0";
   return new Intl.NumberFormat("pt-BR").format(value);
-}
+};
 
 export default function Home() {
   const [firstPurchase, setFirstPurchase] = useState<Purchase>({ quantity: "", price: "" });
@@ -91,6 +94,8 @@ export default function Home() {
             Limpar Campos
           </Button>
         </div>
+
+        <FinancialCalculators />
       </main>
       <footer className="w-full max-w-4xl mt-12 text-center text-muted-foreground text-sm">
         <p>Feito com ❤️ para ajudar investidores.</p>
@@ -182,4 +187,196 @@ function ResultItem({ label, value, isPrimary = false }: ResultItemProps) {
       <p className={`text-2xl font-bold ${isPrimary ? 'text-primary' : ''}`}>{value}</p>
     </div>
   );
+}
+
+function FinancialCalculators() {
+  return (
+    <Card className="shadow-lg mt-8">
+      <CardHeader>
+        <CardTitle>Calculadoras Financeiras</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue="calculate-percent">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="calculate-percent">Calcular %</TabsTrigger>
+            <TabsTrigger value="sum-percent">Somar com %</TabsTrigger>
+            <TabsTrigger value="calculate-sale">Calcular Venda</TabsTrigger>
+          </TabsList>
+          <TabsContent value="calculate-percent">
+            <CalculatePercentTab />
+          </TabsContent>
+          <TabsContent value="sum-percent">
+            <SumPercentTab />
+          </TabsContent>
+          <TabsContent value="calculate-sale">
+            <CalculateSaleTab />
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CalculatePercentTab() {
+  const [originalValue, setOriginalValue] = useState("");
+  const [percentage, setPercentage] = useState("");
+  const [result, setResult] = useState<number | null>(null);
+
+  const handleCalculate = () => {
+    const val = parseFloat(originalValue);
+    const pct = parseFloat(percentage);
+    if (!isNaN(val) && !isNaN(pct)) {
+      setResult((val * pct) / 100);
+    } else {
+      setResult(null);
+    }
+  };
+  
+  return (
+    <div className="space-y-4 pt-4">
+      <div className="space-y-2">
+        <Label htmlFor="originalValue">Valor Original</Label>
+        <Input id="originalValue" type="number" placeholder="Ex: 1000" value={originalValue} onChange={e => setOriginalValue(e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="percentage">Porcentagem (%)</Label>
+        <Input id="percentage" type="number" placeholder="Ex: 25" value={percentage} onChange={e => setPercentage(e.target.value)} />
+      </div>
+      <Button onClick={handleCalculate}>Calcular</Button>
+      {result !== null && (
+        <div className="pt-4">
+          <Label>Resultado</Label>
+          <div className="w-full h-10 px-3 py-2 rounded-md border border-input bg-muted flex items-center text-base">
+            {formatCurrency(result)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SumPercentTab() {
+  const [initialValue, setInitialValue] = useState("");
+  const [percentage, setPercentage] = useState("");
+  const [result, setResult] = useState<number | null>(null);
+
+  const handleCalculate = () => {
+    const val = parseFloat(initialValue);
+    const pct = parseFloat(percentage);
+    if (!isNaN(val) && !isNaN(pct)) {
+      setResult(val + ((val * pct) / 100));
+    } else {
+      setResult(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4 pt-4">
+      <div className="space-y-2">
+        <Label htmlFor="initialValue">Valor Inicial</Label>
+        <Input id="initialValue" type="number" placeholder="Ex: 1000" value={initialValue} onChange={e => setInitialValue(e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="sumPercentage">Porcentagem a Somar (%)</Label>
+        <Input id="sumPercentage" type="number" placeholder="Ex: 15" value={percentage} onChange={e => setPercentage(e.target.value)} />
+      </div>
+      <Button onClick={handleCalculate}>Calcular Soma</Button>
+      {result !== null && (
+        <div className="pt-4">
+          <Label>Valor Final</Label>
+          <div className="w-full h-10 px-3 py-2 rounded-md border border-input bg-muted flex items-center text-base">
+            {formatCurrency(result)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CalculateSaleTab() {
+    const [cost, setCost] = useState("");
+    const [margin, setMargin] = useState("");
+    const [price, setPrice] = useState("");
+    const [error, setError] = useState<string | null>(null);
+
+    const handleCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newCost = e.target.value;
+        setCost(newCost);
+        const costValue = parseFloat(newCost);
+        const marginValue = parseFloat(margin);
+
+        if (!isNaN(costValue) && costValue > 0 && !isNaN(marginValue)) {
+            const newPrice = costValue * (1 + marginValue / 100);
+            setPrice(newPrice.toFixed(2));
+            validatePrice(newPrice, costValue);
+        } else if (newCost === "") {
+           setPrice("");
+           setMargin("");
+           setError(null);
+        }
+    };
+
+    const handleMarginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newMargin = e.target.value;
+        setMargin(newMargin);
+        const costValue = parseFloat(cost);
+        const marginValue = parseFloat(newMargin);
+
+        if (!isNaN(costValue) && costValue > 0 && !isNaN(marginValue)) {
+            const newPrice = costValue * (1 + marginValue / 100);
+            setPrice(newPrice.toFixed(2));
+            validatePrice(newPrice, costValue);
+        } else if (newMargin === "") {
+            setPrice("");
+        }
+    };
+    
+    const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newPrice = e.target.value;
+        setPrice(newPrice);
+        const costValue = parseFloat(cost);
+        const priceValue = parseFloat(newPrice);
+
+        if (!isNaN(costValue) && costValue > 0 && !isNaN(priceValue)) {
+            const newMargin = ((priceValue / costValue) - 1) * 100;
+            setMargin(newMargin.toFixed(2));
+            validatePrice(priceValue, costValue);
+        } else if (newPrice === "") {
+            setMargin("");
+        }
+    };
+
+    const validatePrice = (priceValue: number, costValue: number) => {
+        if (priceValue < costValue) {
+            setError("O preço de venda não pode ser menor que o custo.");
+        } else {
+            setError(null);
+        }
+    }
+
+    return (
+        <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+                <Label htmlFor="cost">Custo do Produto (R$)</Label>
+                <Input id="cost" type="number" placeholder="Ex: 50" value={cost} onChange={handleCostChange}/>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="margin">Margem de Lucro (%)</Label>
+                <Input id="margin" type="number" placeholder="Ex: 40" value={margin} onChange={handleMarginChange}/>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="price">Preço de Venda (R$)</Label>
+                <Input id="price" type="number" placeholder="Ex: 70" value={price} onChange={handlePriceChange}/>
+            </div>
+            {error && (
+                 <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Erro</AlertTitle>
+                    <AlertDescription>
+                        {error}
+                    </AlertDescription>
+                </Alert>
+            )}
+        </div>
+    );
 }
