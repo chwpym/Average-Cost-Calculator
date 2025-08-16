@@ -2,12 +2,14 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Trash2, PlusCircle, AlertCircle, Info } from "lucide-react";
+import { Trash2, PlusCircle, AlertCircle, Info, Printer } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
@@ -488,6 +490,47 @@ interface BatchPriceItem {
         return { totalCost, totalValue, averageMargin };
       }, [items]);
   
+    const generatePdf = () => {
+        const doc = new jsPDF();
+    
+        autoTable(doc, {
+            head: [['Descrição', 'Qtde', 'Custo Un. (R$)', 'Custo Total (R$)', 'Margem (%)', 'Venda Un. (R$)', 'Venda Total (R$)']],
+            body: items.map(item => {
+                const quantity = parseFloat(item.quantity) || 0;
+                const cost = parseFloat(item.cost) || 0;
+                const price = parseFloat(item.price) || 0;
+                const totalCost = quantity * cost;
+                const totalSale = quantity * price;
+                return [
+                    item.description,
+                    formatNumber(quantity, 0),
+                    formatCurrency(cost),
+                    formatCurrency(totalCost),
+                    formatNumber(parseFloat(item.margin) || 0, 2, '%'),
+                    formatCurrency(price),
+                    formatCurrency(totalSale)
+                ];
+            }),
+            foot: [
+                [
+                    { content: 'Totais:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } },
+                    { content: formatCurrency(totals.totalCost), styles: { fontStyle: 'bold' } },
+                    { content: 'Média (%):', styles: { halign: 'right', fontStyle: 'bold' } },
+                    { content: formatNumber(totals.averageMargin, 2, '%'), styles: { fontStyle: 'bold' } },
+                    { content: formatCurrency(totals.totalValue), styles: { fontStyle: 'bold' } },
+                    ''
+                ]
+            ],
+            didDrawPage: (data) => {
+                doc.text("Precificação de Lote", data.settings.margin.left, 15);
+            },
+            headStyles: { fillColor: [63, 81, 181] },
+            footStyles: { fillColor: [224, 224, 224], textColor: [0,0,0], fontStyle: 'bold' },
+        });
+    
+        doc.save("precificacao_lote.pdf");
+    };
+      
     return (
       <div className="pt-4 space-y-4">
         <div className="overflow-x-auto">
@@ -578,7 +621,7 @@ interface BatchPriceItem {
                     </TableCell>
                     <TableCell className="text-right font-bold">
                         <div className="flex items-center justify-end space-x-2">
-                            <span>Média da Margem</span>
+                            <span>Média (%)</span>
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -606,10 +649,16 @@ interface BatchPriceItem {
             </TableFooter>
             </Table>
         </div>
-        <Button onClick={addItem} variant="outline">
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Adicionar Item
-        </Button>
+        <div className="flex space-x-2">
+            <Button onClick={addItem} variant="outline">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Adicionar Item
+            </Button>
+            <Button onClick={generatePdf}>
+                <Printer className="mr-2 h-4 w-4" />
+                Gerar PDF
+            </Button>
+        </div>
       </div>
     );
   }
