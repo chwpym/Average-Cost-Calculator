@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
@@ -30,6 +31,36 @@ const formatNumber = (value: number) => {
 };
 
 export default function Home() {
+  return (
+    <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-4 sm:p-6 md:p-8">
+      <header className="w-full max-w-4xl flex justify-between items-center mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-primary">Calculadoras Financeiras</h1>
+        <ThemeToggle />
+      </header>
+
+      <main className="w-full max-w-4xl">
+        <Tabs defaultValue="average-price" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-8">
+            <TabsTrigger value="average-price">Preço Médio</TabsTrigger>
+            <TabsTrigger value="financial-calculators">Outras Calculadoras</TabsTrigger>
+          </TabsList>
+          <TabsContent value="average-price">
+            <AveragePriceCalculator />
+          </TabsContent>
+          <TabsContent value="financial-calculators">
+            <FinancialCalculators />
+          </TabsContent>
+        </Tabs>
+      </main>
+
+      <footer className="w-full max-w-4xl mt-12 text-center text-muted-foreground text-sm">
+        <p>Feito com ❤️ para ajudar investidores.</p>
+      </footer>
+    </div>
+  );
+}
+
+function AveragePriceCalculator() {
   const [firstPurchase, setFirstPurchase] = useState<Purchase>({ quantity: "", price: "" });
   const [secondPurchase, setSecondPurchase] = useState<Purchase>({ quantity: "", price: "" });
 
@@ -60,47 +91,35 @@ export default function Home() {
   }, [firstPurchase, secondPurchase]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-4 sm:p-6 md:p-8">
-      <header className="w-full max-w-4xl flex justify-between items-center mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-primary">Calculadora de Preço Médio</h1>
-        <ThemeToggle />
-      </header>
-
-      <main className="w-full max-w-4xl">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-          <PurchaseCard
-            title="Primeira Compra"
-            purchase={firstPurchase}
-            onChange={handlePurchaseChange(setFirstPurchase)}
-            totalValue={calculations.total1}
-          />
-          <PurchaseCard
-            title="Segunda Compra"
-            purchase={secondPurchase}
-            onChange={handlePurchaseChange(setSecondPurchase)}
-            totalValue={calculations.total2}
-          />
-        </div>
-
-        <ResultCard
-          totalQuantity={calculations.totalQuantity}
-          totalInvested={calculations.totalInvested}
-          averagePrice={calculations.averagePrice}
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <PurchaseCard
+          title="Primeira Compra"
+          purchase={firstPurchase}
+          onChange={handlePurchaseChange(setFirstPurchase)}
+          totalValue={calculations.total1}
         />
+        <PurchaseCard
+          title="Segunda Compra"
+          purchase={secondPurchase}
+          onChange={handlePurchaseChange(setSecondPurchase)}
+          totalValue={calculations.total2}
+        />
+      </div>
 
-        <div className="mt-8 flex justify-center">
-          <Button variant="destructive" onClick={clearFields}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            Limpar Campos
-          </Button>
-        </div>
+      <ResultCard
+        totalQuantity={calculations.totalQuantity}
+        totalInvested={calculations.totalInvested}
+        averagePrice={calculations.averagePrice}
+      />
 
-        <FinancialCalculators />
-      </main>
-      <footer className="w-full max-w-4xl mt-12 text-center text-muted-foreground text-sm">
-        <p>Feito com ❤️ para ajudar investidores.</p>
-      </footer>
-    </div>
+      <div className="mt-8 flex justify-center">
+        <Button variant="destructive" onClick={clearFields}>
+          <Trash2 className="mr-2 h-4 w-4" />
+          Limpar Campos
+        </Button>
+      </div>
+    </>
   );
 }
 
@@ -191,7 +210,7 @@ function ResultItem({ label, value, isPrimary = false }: ResultItemProps) {
 
 function FinancialCalculators() {
   return (
-    <Card className="shadow-lg mt-8">
+    <Card className="shadow-lg">
       <CardHeader>
         <CardTitle>Calculadoras Financeiras</CardTitle>
       </CardHeader>
