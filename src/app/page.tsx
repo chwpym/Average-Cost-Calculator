@@ -479,7 +479,7 @@ interface BatchPriceItem {
 
         const averageMargin = totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : 0;
 
-        return { totalValue, averageMargin };
+        return { totalCost, totalValue, averageMargin };
       }, [items]);
   
     return (
@@ -488,20 +488,23 @@ interface BatchPriceItem {
             <Table>
             <TableHeader>
                 <TableRow>
-                <TableHead className="w-[200px]">Descrição</TableHead>
-                <TableHead className="w-[100px]">Qtde</TableHead>
-                <TableHead className="w-[120px]">Custo (R$)</TableHead>
-                <TableHead className="w-[120px]">Margem (%)</TableHead>
-                <TableHead className="w-[120px]">Venda (R$)</TableHead>
-                <TableHead className="w-[120px]">Total (R$)</TableHead>
+                <TableHead className="w-[180px]">Descrição</TableHead>
+                <TableHead className="w-[80px]">Qtde</TableHead>
+                <TableHead className="w-[110px]">Custo Un. (R$)</TableHead>
+                <TableHead className="w-[110px]">Custo Total (R$)</TableHead>
+                <TableHead className="w-[110px]">Margem (%)</TableHead>
+                <TableHead className="w-[110px]">Venda Un. (R$)</TableHead>
+                <TableHead className="w-[110px]">Venda Total (R$)</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
                 {items.map(item => {
                     const quantity = parseFloat(item.quantity) || 0;
+                    const cost = parseFloat(item.cost) || 0;
                     const price = parseFloat(item.price) || 0;
-                    const total = quantity * price;
+                    const totalCost = quantity * cost;
+                    const totalSale = quantity * price;
                     return (
                         <TableRow key={item.id}>
                             <TableCell>
@@ -526,6 +529,11 @@ interface BatchPriceItem {
                                 onChange={e => handleItemChange(item.id, 'cost', e.target.value)}
                                 />
                             </TableCell>
+                             <TableCell>
+                                <div className="w-full h-10 px-3 py-2 rounded-md border border-input bg-muted flex items-center text-sm">
+                                    {formatCurrency(totalCost)}
+                                </div>
+                            </TableCell>
                             <TableCell>
                                 <Input
                                 type="number"
@@ -542,7 +550,7 @@ interface BatchPriceItem {
                             </TableCell>
                             <TableCell>
                                 <div className="w-full h-10 px-3 py-2 rounded-md border border-input bg-muted flex items-center text-sm">
-                                    {formatCurrency(total)}
+                                    {formatCurrency(totalSale)}
                                 </div>
                             </TableCell>
                             <TableCell>
@@ -556,14 +564,23 @@ interface BatchPriceItem {
             </TableBody>
             <TableFooter>
                 <TableRow>
-                    <TableCell colSpan={3}></TableCell>
-                    <TableCell className="text-right font-bold">Média da Margem:</TableCell>
+                    <TableCell colSpan={3} className="text-right font-bold">Totais:</TableCell>
                     <TableCell className="font-bold">
+                        <div className="w-full h-10 px-3 py-2 rounded-md border border-input bg-muted flex items-center text-sm font-bold">
+                            {formatCurrency(totals.totalCost)}
+                        </div>
+                    </TableCell>
+                    <TableCell className="text-right font-bold">
+                        <div className="flex flex-col items-end">
+                            <span>Média da Margem:</span>
+                             <span className="text-xs font-normal text-muted-foreground">(sobre o custo total)</span>
+                        </div>
+                    </TableCell>
+                     <TableCell className="font-bold">
                         <div className="w-full h-10 px-3 py-2 rounded-md border border-input bg-muted flex items-center text-sm font-bold">
                             {formatNumber(totals.averageMargin, 2, '%')}
                         </div>
                     </TableCell>
-                    <TableCell className="text-right font-bold">Valor Total Geral:</TableCell>
                     <TableCell className="font-bold">
                         <div className="w-full h-10 px-3 py-2 rounded-md border border-input bg-muted flex items-center text-sm font-bold">
                             {formatCurrency(totals.totalValue)}
@@ -581,5 +598,3 @@ interface BatchPriceItem {
       </div>
     );
   }
-
-    
