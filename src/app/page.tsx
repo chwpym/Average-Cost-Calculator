@@ -25,12 +25,13 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-const formatNumber = (value: number, minimumFractionDigits = 0) => {
-    if (isNaN(value)) return "0";
-    return new Intl.NumberFormat("pt-BR", {
+const formatNumber = (value: number, minimumFractionDigits = 0, suffix = "") => {
+    if (isNaN(value)) return `0${suffix}`;
+    const formatted = new Intl.NumberFormat("pt-BR", {
       minimumFractionDigits: minimumFractionDigits,
       maximumFractionDigits: 2,
     }).format(value);
+    return `${formatted}${suffix}`;
   };
 
 export default function Home() {
@@ -427,7 +428,6 @@ interface BatchPriceItem {
           if (item.id === id) {
             const updatedItem = { ...item, [field]: value };
             
-            const quantity = parseFloat(updatedItem.quantity) || 0;
             const cost = parseFloat(updatedItem.cost) || 0;
             let margin = parseFloat(updatedItem.margin) || 0;
             let price = parseFloat(updatedItem.price) || 0;
@@ -464,12 +464,22 @@ interface BatchPriceItem {
       setItems(prev => prev.filter(item => item.id !== id));
     };
   
-    const totalValue = useMemo(() => {
-        return items.reduce((acc, item) => {
+    const totals = useMemo(() => {
+        const totalCost = items.reduce((acc, item) => {
+            const quantity = parseFloat(item.quantity) || 0;
+            const cost = parseFloat(item.cost) || 0;
+            return acc + (quantity * cost);
+        }, 0);
+
+        const totalValue = items.reduce((acc, item) => {
           const quantity = parseFloat(item.quantity) || 0;
           const price = parseFloat(item.price) || 0;
           return acc + (quantity * price);
         }, 0);
+
+        const averageMargin = totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : 0;
+
+        return { totalValue, averageMargin };
       }, [items]);
   
     return (
@@ -546,10 +556,17 @@ interface BatchPriceItem {
             </TableBody>
             <TableFooter>
                 <TableRow>
-                    <TableCell colSpan={5} className="text-right font-bold">Valor Total Geral:</TableCell>
+                    <TableCell colSpan={3}></TableCell>
+                    <TableCell className="text-right font-bold">Média da Margem:</TableCell>
                     <TableCell className="font-bold">
                         <div className="w-full h-10 px-3 py-2 rounded-md border border-input bg-muted flex items-center text-sm font-bold">
-                            {formatCurrency(totalValue)}
+                            {formatNumber(totals.averageMargin, 2, '%')}
+                        </div>
+                    </TableCell>
+                    <TableCell className="text-right font-bold">Valor Total Geral:</TableCell>
+                    <TableCell className="font-bold">
+                        <div className="w-full h-10 px-3 py-2 rounded-md border border-input bg-muted flex items-center text-sm font-bold">
+                            {formatCurrency(totals.totalValue)}
                         </div>
                     </TableCell>
                     <TableCell></TableCell>
@@ -564,3 +581,5 @@ interface BatchPriceItem {
       </div>
     );
   }
+
+    
