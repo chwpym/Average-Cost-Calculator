@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { XMLParser } from "fast-xml-parser";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Trash2, PlusCircle, Info, Printer } from "lucide-react";
+import { Trash2, PlusCircle, Info, Printer, Upload } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import {
   Tooltip,
@@ -14,6 +15,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 interface BatchPriceItem {
@@ -29,6 +31,8 @@ export function BatchPricingCalculator() {
     const [items, setItems] = useState<BatchPriceItem[]>([
         { id: 1, description: "", quantity: "1", cost: "", margin: "", price: "" },
     ]);
+    const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleItemChange = (id: number, field: keyof BatchPriceItem, value: string) => {
         setItems(prevItems => {
@@ -88,7 +92,61 @@ export function BatchPricingCalculator() {
         const averageMargin = totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : 0;
 
         return { totalCost, totalValue, averageMargin };
-        }, [items]);
+    }, [items]);
+
+    const handleImportXml = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const xmlData = e.target?.result as string;
+                const parser = new XMLParser({ ignoreAttributes: false });
+                const jsonObj = parser.parse(xmlData);
+
+                const dets = jsonObj?.nfeProc?.NFe?.infNFe?.det;
+                if (!dets) {
+                    throw new Error("Estrutura do XML da NF-e inválida ou não encontrada.");
+                }
+
+                const productList = Array.isArray(dets) ? dets : [dets];
+
+                const newItems: BatchPriceItem[] = productList.map((det: any, index: number) => {
+                    const prod = det.prod;
+                    return {
+                        id: Date.now() + index,
+                        description: prod.xProd || "",
+                        quantity: String(prod.qCom || 0),
+                        cost: String(prod.vUnCom || 0),
+                        margin: "",
+                        price: ""
+                    };
+                });
+                
+                setItems(newItems.length > 0 ? newItems : [{ id: 1, description: "", quantity: "1", cost: "", margin: "", price: "" }]);
+
+                toast({
+                    title: "Sucesso!",
+                    description: `${newItems.length} itens importados da NF-e.`,
+                });
+
+            } catch (error) {
+                console.error("Erro ao processar o XML:", error);
+                toast({
+                    variant: "destructive",
+                    title: "Erro de Importação",
+                    description: "Não foi possível ler o arquivo XML. Verifique se o formato é uma NF-e válida.",
+                });
+            } finally {
+              // Reseta o input para permitir o upload do mesmo arquivo novamente
+              if(fileInputRef.current) {
+                fileInputRef.current.value = "";
+              }
+            }
+        };
+        reader.readAsText(file, 'ISO-8859-1');
+    };
 
     const generatePdf = () => {
         const doc = new jsPDF();
@@ -258,6 +316,17 @@ export function BatchPricingCalculator() {
                 <Printer className="mr-2 h-4 w-4" />
                 Gerar PDF
             </Button>
+            <Button onClick={() => fileInputRef.current?.click()} variant="secondary">
+                <Upload className="mr-2 h-4 w-4" />
+                Importar XML
+            </Button>
+            <Input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleImportXml}
+                className="hidden" 
+                accept=".xml"
+            />
         </div>
         </div>
     );
