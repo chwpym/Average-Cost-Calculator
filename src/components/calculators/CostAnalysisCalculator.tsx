@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useMemo, useRef } from "react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { XMLParser } from "fast-xml-parser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, FileX } from "lucide-react";
+import { Upload, FileX, Printer } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatNumber } from "@/lib/utils";
@@ -132,14 +134,65 @@ export function CostAnalysisCalculator() {
         }, { totalCost: 0, totalIPI: 0, totalST: 0, totalFrete: 0, finalTotalCost: 0 });
     }, [items]);
 
+    const generatePdf = () => {
+        const doc = new jsPDF({ orientation: "landscape" });
+        
+        doc.setFontSize(18);
+        doc.text("Análise de Custo por NF-e", 14, 22);
+
+        autoTable(doc, {
+            startY: 30,
+            head: [['Descrição', 'Qtde', 'Custo Un. Orig.', 'Custo Total Orig.', 'IPI', 'ICMS-ST', 'Frete', 'Custo Un. Final', 'Custo Total Final']],
+            body: items.map(item => [
+                item.description,
+                formatNumber(item.quantity, 0),
+                formatCurrency(item.unitCost),
+                formatCurrency(item.totalCost),
+                formatCurrency(item.ipi),
+                formatCurrency(item.icmsST),
+                formatCurrency(item.frete),
+                formatCurrency(item.finalUnitCost),
+                formatCurrency(item.finalTotalCost),
+            ]),
+            foot: [
+                [
+                    { content: 'Totais:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } },
+                    { content: formatCurrency(totals.totalCost), styles: { fontStyle: 'bold' } },
+                    { content: formatCurrency(totals.totalIPI), styles: { fontStyle: 'bold' } },
+                    { content: formatCurrency(totals.totalST), styles: { fontStyle: 'bold' } },
+                    { content: formatCurrency(totals.totalFrete), styles: { fontStyle: 'bold' } },
+                    { content: '', styles: { fontStyle: 'bold' } },
+                    { content: formatCurrency(totals.finalTotalCost), styles: { fontStyle: 'bold', fillColor: [232, 245, 233] } },
+                ]
+            ],
+            headStyles: { fillColor: [63, 81, 181] },
+            footStyles: { fillColor: [224, 224, 224], textColor: [0,0,0], fontStyle: 'bold' },
+            didDrawPage: (data) => {
+                // Adiciona o nome do arquivo no rodapé de cada página
+                if (fileName) {
+                    doc.setFontSize(10);
+                    doc.text(`Arquivo: ${fileName}`, 14, doc.internal.pageSize.height - 10);
+                }
+            }
+        });
+    
+        doc.save("analise_custo_nfe.pdf");
+    };
+
 
     return (
         <div className="pt-4 space-y-4">
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2">
                 <Button onClick={() => fileInputRef.current?.click()}>
                     <Upload className="mr-2" />
                     Importar XML da NF-e
                 </Button>
+                 {items.length > 0 && (
+                    <Button onClick={generatePdf} variant="secondary">
+                        <Printer className="mr-2 h-4 w-4" />
+                        Gerar PDF
+                    </Button>
+                )}
                 {fileName && (
                     <div className="flex items-center gap-2 p-2 border rounded-md bg-muted">
                         <span className="text-sm text-muted-foreground">{fileName}</span>
@@ -162,7 +215,7 @@ export function CostAnalysisCalculator() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="w-[300px]">Descrição</TableHead>
+                                <TableHead className="min-w-[300px]">Descrição</TableHead>
                                 <TableHead>Qtde</TableHead>
                                 <TableHead>Custo Un. Orig.</TableHead>
                                 <TableHead>Custo Total Orig.</TableHead>
@@ -195,7 +248,8 @@ export function CostAnalysisCalculator() {
                                 <TableCell>{formatCurrency(totals.totalIPI)}</TableCell>
                                 <TableCell>{formatCurrency(totals.totalST)}</TableCell>
                                 <TableCell>{formatCurrency(totals.totalFrete)}</TableCell>
-                                <TableCell colSpan={2} className="text-right text-primary">{formatCurrency(totals.finalTotalCost)}</TableCell>
+                                <TableCell></TableCell>
+                                <TableCell className="text-primary">{formatCurrency(totals.finalTotalCost)}</TableCell>
                             </TableRow>
                         </TableFooter>
                     </Table>
