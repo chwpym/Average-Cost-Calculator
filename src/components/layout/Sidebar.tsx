@@ -8,7 +8,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Menu, Calculator, ShoppingCart, Percent, Bot, Plus } from "lucide-react";
+import { Menu, Calculator, ShoppingCart, Percent, Bot, Plus, FileScan } from "lucide-react";
 import Link from "next/link";
 
 const calculators = [
@@ -36,6 +36,11 @@ const calculators = [
       href: '/sum-percent',
       icon: Plus,
       title: 'Somar com Porcentagem',
+    },
+    {
+      href: '/cost-analysis',
+      icon: FileScan,
+      title: 'Análise de Custo por NF-e',
     },
 ];
 

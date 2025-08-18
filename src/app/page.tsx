@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Calculator, ShoppingCart, Percent, Bot, Plus } from 'lucide-react';
+import { Calculator, ShoppingCart, Percent, Bot, Plus, FileScan } from 'lucide-react';
 
 const calculators = [
   {
@@ -34,6 +34,12 @@ const calculators = [
     icon: Plus,
     title: 'Somar com Porcentagem',
     description: 'Adicione uma porcentagem a um valor inicial.',
+  },
+  {
+    href: '/cost-analysis',
+    icon: FileScan,
+    title: 'Análise de Custo por NF-e',
+    description: 'Importe uma NF-e para calcular o custo real dos produtos.',
   },
 ];
 
