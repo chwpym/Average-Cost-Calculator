@@ -8,7 +8,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Menu, Calculator, ShoppingCart, Percent, Bot, Plus, FileScan } from "lucide-react";
+import { Menu, Calculator, ShoppingCart, Percent, Bot, Plus, FileScan, Tag } from "lucide-react";
 import Link from "next/link";
 
 const calculators = [
@@ -24,12 +24,12 @@ const calculators = [
     },
     {
       href: '/calculate-sale',
-      icon: Percent,
+      icon: Tag,
       title: 'Calcular Venda',
     },
     {
       href: '/calculate-percent',
-      icon: Bot,
+      icon: Percent,
       title: 'Calcular Porcentagem',
     },
     {
