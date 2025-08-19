@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Calculator, ShoppingCart, Percent, Bot, Plus, FileScan, Tag } from 'lucide-react';
+import { Calculator, ShoppingCart, Percent, Bot, Plus, FileScan, Tag, DivideCircle } from 'lucide-react';
 
 const calculators = [
   {
@@ -22,6 +22,12 @@ const calculators = [
     icon: Tag,
     title: 'Calcular Venda',
     description: 'Calcule o preço de venda a partir do custo e margem.',
+  },
+  {
+    href: '/unit-cost',
+    icon: DivideCircle,
+    title: 'Custo Unitário',
+    description: 'Encontre o custo por item a partir do total e quantidade.',
   },
   {
     href: '/calculate-percent',
