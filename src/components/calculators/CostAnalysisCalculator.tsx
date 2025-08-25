@@ -27,9 +27,16 @@ interface AnalyzedItem {
     finalTotalCost: number;
 }
 
+interface NfeInfo {
+    emitterName: string;
+    emitterCnpj: string;
+    nfeNumber: string;
+}
+
 export function CostAnalysisCalculator() {
     const [items, setItems] = useState<AnalyzedItem[]>([]);
     const [fileName, setFileName] = useState<string | null>(null);
+    const [nfeInfo, setNfeInfo] = useState<NfeInfo | null>(null);
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -56,6 +63,13 @@ export function CostAnalysisCalculator() {
                 if (!dets || !total) {
                     throw new Error("Estrutura do XML da NF-e inválida: <det> ou <ICMSTot> não encontrados.");
                 }
+
+                const newNfeInfo: NfeInfo = {
+                    emitterName: infNFe.emit?.xNome || 'N/A',
+                    emitterCnpj: infNFe.emit?.CNPJ || 'N/A',
+                    nfeNumber: infNFe.ide?.nNF || 'N/A',
+                };
+                setNfeInfo(newNfeInfo);
                 
                 const totalProdValue = parseFloat(total.vProd) || 0;
                 
@@ -77,7 +91,6 @@ export function CostAnalysisCalculator() {
                     const ipiValor = imposto?.IPI?.IPITrib?.vIPI || 0;
                     const stValor = imposto?.ICMS?.ICMSST?.vICMSST || 0;
                     
-                    // Use o valor do produto se existir, senão rateie o total da nota
                     const freteRateado = parseFloat(prod.vFrete) || (totalFrete * itemWeight);
                     const seguroRateado = parseFloat(prod.vSeg) || (totalSeguro * itemWeight);
                     const descontoRateado = parseFloat(prod.vDesc) || (totalDesconto * itemWeight);
@@ -114,6 +127,7 @@ export function CostAnalysisCalculator() {
                 console.error("Erro ao processar o XML:", error);
                 setItems([]);
                 setFileName(null);
+                setNfeInfo(null);
                 toast({
                     variant: "destructive",
                     title: "Erro de Importação",
@@ -131,6 +145,7 @@ export function CostAnalysisCalculator() {
     const clearData = () => {
         setItems([]);
         setFileName(null);
+        setNfeInfo(null);
         if(fileInputRef.current) {
             fileInputRef.current.value = "";
         }
@@ -154,10 +169,17 @@ export function CostAnalysisCalculator() {
         const doc = new jsPDF({ orientation: "landscape" });
         
         doc.setFontSize(18);
-        doc.text("Análise de Custo por NF-e", 14, 22);
+        doc.text("Análise de Custo por NF-e", doc.internal.pageSize.getWidth() / 2, 22, { align: "center" });
+
+        if (nfeInfo) {
+            doc.setFontSize(10);
+            doc.text(`NF-e: ${nfeInfo.nfeNumber}`, 14, 32);
+            doc.text(`Emitente: ${nfeInfo.emitterName}`, 14, 38);
+            doc.text(`CNPJ: ${nfeInfo.emitterCnpj}`, 14, 44);
+        }
 
         autoTable(doc, {
-            startY: 30,
+            startY: nfeInfo ? 50 : 30,
             head: [['Descrição', 'Qtde', 'Custo Un. Orig.', 'Custo Total Orig.', 'IPI', 'ICMS-ST', 'Frete', 'Seguro', 'Desconto', 'Outras', 'Custo Un. Final', 'Custo Total Final']],
             body: items.map(item => [
                 item.description,
@@ -191,13 +213,13 @@ export function CostAnalysisCalculator() {
             footStyles: { fillColor: [224, 224, 224], textColor: [0,0,0], fontStyle: 'bold' },
             didDrawPage: (data) => {
                 if (fileName) {
-                    doc.setFontSize(10);
+                    doc.setFontSize(8);
                     doc.text(`Arquivo: ${fileName}`, 14, doc.internal.pageSize.height - 10);
                 }
             }
         });
     
-        doc.save("analise_custo_nfe.pdf");
+        doc.save(`analise_custo_nfe_${nfeInfo?.nfeNumber || 'sem_numero'}.pdf`);
     };
 
 
@@ -288,3 +310,5 @@ export function CostAnalysisCalculator() {
         </div>
     );
 }
+
+    
