@@ -16,19 +16,21 @@ interface AppLayoutProps {
 export function AppLayout({ title, children, fullWidth = false }: AppLayoutProps) {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-4 sm:p-6 md:p-8">
-      <header className={cn("w-full flex justify-between items-center mb-8", fullWidth ? "px-4" : "max-w-6xl")}>
-        <div className="flex items-center gap-4">
+      <header className={cn("w-full flex items-center mb-8", fullWidth ? "justify-center" : "justify-between", fullWidth ? "px-4" : "max-w-6xl")}>
+        <div className={cn("flex items-center gap-4", fullWidth && "absolute left-4 sm:left-6 md:left-8")}>
            <Sidebar />
            <Link href="/" passHref>
              <Button variant="outline" size="icon" aria-label="Voltar para o Dashboard">
                 <Home className="h-5 w-5" />
              </Button>
            </Link>
-          <h1 className="text-2xl sm:text-3xl font-bold text-primary">
-            {title}
-          </h1>
         </div>
-        <ThemeToggle />
+        <h1 className="text-2xl sm:text-3xl font-bold text-primary text-center">
+            {title}
+        </h1>
+        <div className={cn(fullWidth && "absolute right-4 sm:right-6 md:right-8")}>
+          <ThemeToggle />
+        </div>
       </header>
 
       <main className={cn("w-full", fullWidth ? "" : "max-w-6xl")}>
