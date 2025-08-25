@@ -233,7 +233,7 @@ export function NfeComparator() {
                     Importar Arquivos XML
                 </Button>
                 {loadedNfes.length > 1 && (
-                     <Button onClick={handleCompare} variant="secondary" disabled={isComparing}>
+                     <Button onClick={handleCompare} variant="third" disabled={isComparing}>
                         <GitCompareArrows className="mr-2 h-4 w-4" />
                         {isComparing ? 'Comparando...' : 'Comparar Produtos'}
                     </Button>
