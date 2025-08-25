@@ -38,15 +38,32 @@ export function NfeComparator() {
     const processFiles = useCallback((files: FileList) => {
         if (!files || files.length === 0) return;
 
-        const allProductsMap = new Map<string, ComparedProduct>();
-        const newLoadedFiles: LoadedFile[] = [];
+        let allProductsMap = new Map<string, ComparedProduct>();
+        // Se já existem arquivos, mantenha os produtos existentes no mapa
+        if (comparedProducts.length > 0) {
+            comparedProducts.forEach(p => {
+                const key = p.code;
+                if (!allProductsMap.has(key)) {
+                    allProductsMap.set(key, {...p});
+                }
+            });
+        }
+        
+        const newLoadedFiles: LoadedFile[] = [...loadedFiles];
+        let filesToProcess = files.length;
         let filesProcessed = 0;
-
-        // Limpa os dados anteriores para uma nova comparação
-        setComparedProducts([]);
-        setLoadedFiles([]);
-
+        
         Array.from(files).forEach(file => {
+            // Evita carregar o mesmo arquivo duas vezes
+            if(newLoadedFiles.some(f => f.name === file.name)) {
+                filesToProcess--;
+                if(filesToProcess === filesProcessed) {
+                    // Se este era o último arquivo e já foi carregado, atualiza o estado
+                    updateState(allProductsMap, newLoadedFiles);
+                }
+                return;
+            }
+
             const reader = new FileReader();
             reader.onload = (e) => {
                 try {
@@ -71,12 +88,13 @@ export function NfeComparator() {
                         
                         const occurrence: ProductOccurrence = { fileName: file.name, quantity, unitCost };
 
-                        if (allProductsMap.has(code)) {
-                            const existing = allProductsMap.get(code)!;
+                        const key = code;
+                        if (allProductsMap.has(key)) {
+                            const existing = allProductsMap.get(key)!;
                             existing.totalQuantity += quantity;
                             existing.occurrences.push(occurrence);
                         } else {
-                            allProductsMap.set(code, {
+                            allProductsMap.set(key, {
                                 code,
                                 description,
                                 totalQuantity: quantity,
@@ -93,25 +111,29 @@ export function NfeComparator() {
                     });
                 } finally {
                     filesProcessed++;
-                    if (filesProcessed === files.length) {
-                        const sortedProducts = Array.from(allProductsMap.values())
-                            .filter(p => p.occurrences.length > 1)
-                            .sort((a, b) => b.occurrences.length - a.occurrences.length || b.totalQuantity - a.totalQuantity);
-                        
-                        const productsInMultipleFiles = sortedProducts.length;
-                        setComparedProducts(sortedProducts);
-                        setLoadedFiles(newLoadedFiles);
-                        toast({
-                            title: "Sucesso!",
-                            description: `${files.length} arquivos processados. ${productsInMultipleFiles} produtos recorrentes encontrados.`,
-                        });
+                    if (filesProcessed === filesToProcess) {
+                        updateState(allProductsMap, newLoadedFiles);
                     }
                 }
             };
             reader.readAsText(file, 'ISO-8859-1');
         });
 
-    }, [toast]);
+    }, [loadedFiles, comparedProducts, toast]);
+    
+    const updateState = (productMap: Map<string, ComparedProduct>, files: LoadedFile[]) => {
+        const sortedProducts = Array.from(productMap.values())
+            .filter(p => p.occurrences.length > 1)
+            .sort((a, b) => b.occurrences.length - a.occurrences.length || b.totalQuantity - a.totalQuantity);
+        
+        const productsInMultipleFiles = sortedProducts.length;
+        setComparedProducts(sortedProducts);
+        setLoadedFiles(files);
+        toast({
+            title: "Arquivos Processados!",
+            description: `${files.length} arquivos carregados. ${productsInMultipleFiles} produtos recorrentes encontrados.`,
+        });
+    }
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files) {
