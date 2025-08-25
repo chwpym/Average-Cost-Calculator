@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 
 export default function CostAnalysisPage() {
     return (
-        <AppLayout title="Análise de Custo por NF-e">
+        <AppLayout title="Análise de Custo por NF-e" fullWidth>
             <div className="space-y-4">
                 <div>
                     <h2 className="text-xl font-semibold">Análise de Custo por NF-e</h2>
