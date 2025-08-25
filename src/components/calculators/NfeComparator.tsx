@@ -191,7 +191,7 @@ export function NfeComparator() {
                     code: first.code,
                     description: first.description,
                     totalQuantity: group.reduce((sum, item) => sum + item.quantity, 0),
-                    nfeCount: group.length,
+                    nfeCount: new Set(group.map(item => item.nfeId)).size,
                     occurrences: group.map(item => ({
                         nfeId: item.nfeId,
                         nfeNumber: item.nfeNumber,
@@ -200,7 +200,7 @@ export function NfeComparator() {
                         unitCost: item.unitCost
                     }))
                 };
-            });
+            }).filter(item => item.nfeCount > 1);
         
         duplicates.sort((a,b) => b.nfeCount - a.nfeCount || a.description.localeCompare(b.description));
 
@@ -233,7 +233,7 @@ export function NfeComparator() {
                     Importar Arquivos XML
                 </Button>
                 {loadedNfes.length > 1 && (
-                     <Button onClick={handleCompare} disabled={isComparing}>
+                     <Button onClick={handleCompare} variant="secondary" disabled={isComparing}>
                         <GitCompareArrows className="mr-2 h-4 w-4" />
                         {isComparing ? 'Comparando...' : 'Comparar Produtos'}
                     </Button>
