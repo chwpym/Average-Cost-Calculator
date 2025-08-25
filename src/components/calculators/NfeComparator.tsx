@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useMemo } from "react";
 import { XMLParser } from "fast-xml-parser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, FileX, Trash2 } from "lucide-react";
+import { Upload, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatNumber } from "@/lib/utils";
@@ -41,6 +41,11 @@ export function NfeComparator() {
         const allProductsMap = new Map<string, ComparedProduct>();
         const newLoadedFiles: LoadedFile[] = [];
         let filesProcessed = 0;
+        let productsInMultipleFiles = 0;
+
+        // Limpa os dados anteriores para uma nova comparação
+        setComparedProducts([]);
+        setLoadedFiles([]);
 
         Array.from(files).forEach(file => {
             const reader = new FileReader();
@@ -94,11 +99,12 @@ export function NfeComparator() {
                             .filter(p => p.occurrences.length > 1)
                             .sort((a, b) => b.occurrences.length - a.occurrences.length || b.totalQuantity - a.totalQuantity);
                         
+                        productsInMultipleFiles = sortedProducts.length;
                         setComparedProducts(sortedProducts);
                         setLoadedFiles(newLoadedFiles);
                         toast({
                             title: "Sucesso!",
-                            description: `${files.length} arquivos processados. ${sortedProducts.length} produtos recorrentes encontrados.`,
+                            description: `${files.length} arquivos processados. ${productsInMultipleFiles} produtos recorrentes encontrados.`,
                         });
                     }
                 }
@@ -112,7 +118,6 @@ export function NfeComparator() {
         if (event.target.files) {
             processFiles(event.target.files);
         }
-        // Reset input to allow re-uploading the same files
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
@@ -148,7 +153,7 @@ export function NfeComparator() {
                     <Upload className="mr-2 h-4 w-4" />
                     Importar Arquivos XML
                 </Button>
-                {comparedProducts.length > 0 && (
+                {(comparedProducts.length > 0 || loadedFiles.length > 0) && (
                     <Button onClick={clearData} variant="destructive">
                         <Trash2 className="mr-2 h-4 w-4" />
                         Limpar Dados
@@ -165,76 +170,78 @@ export function NfeComparator() {
             </div>
 
             {loadedFiles.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-2 p-4 border rounded-lg bg-muted/50">
                     <h3 className="text-lg font-medium">Arquivos Carregados:</h3>
                     {filesSummary}
                 </div>
             )}
 
-            {comparedProducts.length > 0 && (
+            {comparedProducts.length > 0 ? (
                 <div className="w-full overflow-x-auto">
                     <h3 className="text-lg font-medium mb-2">Produtos Encontrados em Mais de uma NF-e:</h3>
                     <div className="border rounded-lg">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-[120px]">Código</TableHead>
-                                    <TableHead>Descrição</TableHead>
-                                    <TableHead className="text-center">Qtde Total</TableHead>
-                                    <TableHead className="text-center">Nº de NF-es</TableHead>
-                                    <TableHead className="w-[100px]"></TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                <Accordion type="single" collapsible className="w-full">
-                                    {comparedProducts.map(product => (
-                                        <AccordionItem value={product.code} key={product.code} className="border-b-0">
-                                            <TableRow>
-                                                <TableCell className="font-mono text-xs">{product.code}</TableCell>
-                                                <TableCell className="font-medium">{product.description}</TableCell>
-                                                <TableCell className="text-center">{formatNumber(product.totalQuantity)}</TableCell>
-                                                <TableCell className="text-center">
-                                                    <Badge>{product.occurrences.length}</Badge>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <AccordionTrigger>Detalhes</AccordionTrigger>
-                                                </TableCell>
-                                            </TableRow>
-                                            <AccordionContent asChild>
-                                                <tr>
-                                                    <td colSpan={5} className="p-0">
-                                                    <div className="p-4 bg-muted/50">
-                                                        <Table>
-                                                            <TableHeader>
-                                                                <TableRow>
-                                                                    <TableHead>Arquivo NF-e</TableHead>
-                                                                    <TableHead className="text-right">Quantidade</TableHead>
-                                                                    <TableHead className="text-right">Custo Unitário</TableHead>
-                                                                </TableRow>
-                                                            </TableHeader>
-                                                            <TableBody>
-                                                                {product.occurrences.map(occ => (
-                                                                    <TableRow key={occ.fileName}>
-                                                                        <TableCell className="text-sm">{occ.fileName}</TableCell>
-                                                                        <TableCell className="text-right">{formatNumber(occ.quantity)}</TableCell>
-                                                                        <TableCell className="text-right">{formatCurrency(occ.unitCost, 4)}</TableCell>
+                       <Accordion type="single" collapsible className="w-full">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[120px]">Código</TableHead>
+                                        <TableHead>Descrição</TableHead>
+                                        <TableHead className="text-center">Qtde Total</TableHead>
+                                        <TableHead className="text-center">Nº de NF-es</TableHead>
+                                        <TableHead className="w-[120px] text-right">Ações</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                        {comparedProducts.map(product => (
+                                            <AccordionItem value={product.code} key={product.code} asChild>
+                                             <>
+                                                <TableRow>
+                                                    <TableCell className="font-mono text-xs">{product.code}</TableCell>
+                                                    <TableCell className="font-medium">{product.description}</TableCell>
+                                                    <TableCell className="text-center">{formatNumber(product.totalQuantity)}</TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Badge>{product.occurrences.length}</Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <AccordionTrigger>Detalhes</AccordionTrigger>
+                                                    </TableCell>
+                                                </TableRow>
+                                                <AccordionContent asChild>
+                                                    <tr>
+                                                        <td colSpan={5} className="p-0">
+                                                        <div className="p-4 bg-muted/50">
+                                                            <h4 className="font-semibold mb-2">Ocorrências:</h4>
+                                                            <Table>
+                                                                <TableHeader>
+                                                                    <TableRow>
+                                                                        <TableHead>Arquivo NF-e</TableHead>
+                                                                        <TableHead className="text-right">Quantidade</TableHead>
+                                                                        <TableHead className="text-right">Custo Unitário</TableHead>
                                                                     </TableRow>
-                                                                ))}
-                                                            </TableBody>
-                                                        </Table>
-                                                    </div>
-                                                    </td>
-                                                </tr>
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                    ))}
-                                </Accordion>
-                            </TableBody>
-                        </Table>
+                                                                </TableHeader>
+                                                                <TableBody>
+                                                                    {product.occurrences.map((occ, index) => (
+                                                                        <TableRow key={`${occ.fileName}-${index}`}>
+                                                                            <TableCell className="text-sm">{occ.fileName}</TableCell>
+                                                                            <TableCell className="text-right">{formatNumber(occ.quantity)}</TableCell>
+                                                                            <TableCell className="text-right">{formatCurrency(occ.unitCost, 4)}</TableCell>
+                                                                        </TableRow>
+                                                                    ))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </div>
+                                                        </td>
+                                                    </tr>
+                                                </AccordionContent>
+                                            </>
+                                            </AccordionItem>
+                                        ))}
+                                </TableBody>
+                            </Table>
+                       </Accordion>
                     </div>
                 </div>
-            )}
-             {loadedFiles.length > 0 && comparedProducts.length === 0 && (
+            ) : loadedFiles.length > 0 && (
                 <div className="text-center py-10">
                     <p className="text-muted-foreground">Nenhum produto recorrente encontrado nos arquivos selecionados.</p>
                 </div>
