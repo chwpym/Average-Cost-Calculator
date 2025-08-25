@@ -20,7 +20,10 @@ interface Product {
 }
 
 interface LoadedNfe {
-    name: string;
+    id: string; // NFe access key
+    name: string; // Original filename
+    nfeNumber: string;
+    emitterName: string;
     products: Product[];
 }
 
@@ -30,7 +33,8 @@ interface ComparedProduct {
     totalQuantity: number;
     count: number;
     occurrences: Array<{
-        fileName: string;
+        nfeNumber: string;
+        emitterName: string;
         quantity: number;
         unitCost: number;
     }>;
@@ -46,11 +50,6 @@ export function NfeComparator() {
         if (!files || files.length === 0) return;
 
         const filePromises = Array.from(files).map(file => {
-            if (loadedNfes.some(nfe => nfe.name === file.name)) {
-                console.log(`Arquivo ${file.name} já carregado.`);
-                return Promise.resolve(null);
-            }
-
             return new Promise<LoadedNfe | null>((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
@@ -62,6 +61,12 @@ export function NfeComparator() {
                         const infNFe = jsonObj?.nfeProc?.NFe?.infNFe || jsonObj?.NFe?.infNFe;
                         if (!infNFe) {
                             throw new Error(`Estrutura inválida no arquivo ${file.name}`);
+                        }
+                        
+                        const nfeId = infNFe['@_Id'];
+                        if (loadedNfes.some(nfe => nfe.id === nfeId)) {
+                             console.log(`NF-e do arquivo ${file.name} já carregada.`);
+                             return resolve(null);
                         }
 
                         const dets = Array.isArray(infNFe.det) ? infNFe.det : [infNFe.det];
@@ -76,7 +81,13 @@ export function NfeComparator() {
                             };
                         });
 
-                        resolve({ name: file.name, products });
+                        resolve({ 
+                            id: nfeId,
+                            name: file.name, 
+                            nfeNumber: infNFe.ide?.nNF || 'N/A',
+                            emitterName: infNFe.emit?.xNome || 'N/A',
+                            products 
+                        });
 
                     } catch (error: any) {
                         reject({fileName: file.name, message: error.message});
@@ -91,11 +102,16 @@ export function NfeComparator() {
             const newNfes: LoadedNfe[] = [];
             let filesAddedCount = 0;
             let filesFailedCount = 0;
+            let filesSkippedCount = 0;
 
             results.forEach(result => {
-                if (result.status === 'fulfilled' && result.value) {
-                    newNfes.push(result.value);
-                    filesAddedCount++;
+                if (result.status === 'fulfilled') {
+                    if (result.value) {
+                      newNfes.push(result.value);
+                      filesAddedCount++;
+                    } else {
+                      filesSkippedCount++;
+                    }
                 } else if (result.status === 'rejected') {
                     filesFailedCount++;
                     toast({
@@ -107,19 +123,20 @@ export function NfeComparator() {
             });
 
             if (newNfes.length > 0) {
-                setLoadedNfes(prev => [...prev, ...newNfes]);
+                setLoadedNfes(prev => [...prev, ...newNfes].sort((a, b) => a.emitterName.localeCompare(b.emitterName)));
             }
 
             if(filesAddedCount > 0) {
                  toast({
                     title: "Sucesso!",
-                    description: `${filesAddedCount} novo(s) arquivo(s) carregado(s).`,
+                    description: `${filesAddedCount} nova(s) NF-e(s) carregada(s).`,
                 });
             }
-             if (files.length > (filesAddedCount + filesFailedCount)) {
+             if (filesSkippedCount > 0) {
                 toast({
+                    variant: 'default',
                     title: "Aviso",
-                    description: "Alguns arquivos já haviam sido carregados e foram ignorados.",
+                    description: `${filesSkippedCount} arquivo(s) ignorado(s) por já terem sido carregados.`,
                 });
             }
         });
@@ -145,7 +162,8 @@ export function NfeComparator() {
                     existing.count += 1;
                     existing.totalQuantity += product.quantity;
                     existing.occurrences.push({
-                        fileName: nfe.name,
+                        nfeNumber: nfe.nfeNumber,
+                        emitterName: nfe.emitterName,
                         quantity: product.quantity,
                         unitCost: product.unitCost,
                     });
@@ -156,7 +174,8 @@ export function NfeComparator() {
                         totalQuantity: product.quantity,
                         count: 1,
                         occurrences: [{
-                            fileName: nfe.name,
+                            nfeNumber: nfe.nfeNumber,
+                            emitterName: nfe.emitterName,
                             quantity: product.quantity,
                             unitCost: product.unitCost,
                         }],
@@ -166,7 +185,7 @@ export function NfeComparator() {
         });
 
         const duplicates = Array.from(productMap.values()).filter(p => p.count > 1);
-        duplicates.sort((a, b) => b.count - a.count);
+        duplicates.sort((a, b) => b.count - a.count || a.description.localeCompare(b.description));
 
         setComparisonResult(duplicates);
 
@@ -217,13 +236,15 @@ export function NfeComparator() {
 
             {loadedNfes.length > 0 && (
                 <div className="space-y-2 p-4 border rounded-lg bg-muted/50">
-                    <h3 className="text-lg font-medium">Arquivos Carregados ({loadedNfes.length}):</h3>
+                    <h3 className="text-lg font-medium">NF-es Carregadas ({loadedNfes.length}):</h3>
                      <Accordion type="multiple" className="w-full">
                         {loadedNfes.map((nfe) => (
-                            <AccordionItem value={nfe.name} key={nfe.name}>
+                            <AccordionItem value={nfe.id} key={nfe.id}>
                                 <AccordionTrigger>
-                                    <span className="font-medium text-left">{nfe.name}</span>
-                                    <span className="text-sm text-muted-foreground ml-2">({nfe.products.length} produtos)</span>
+                                    <div className="flex flex-col text-left">
+                                      <span className="font-medium">{nfe.emitterName}</span>
+                                      <span className="text-sm text-muted-foreground">NF-e: {nfe.nfeNumber} ({nfe.products.length} produtos)</span>
+                                    </div>
                                 </AccordionTrigger>
                                 <AccordionContent>
                                     <div className="w-full overflow-x-auto p-2 bg-background rounded-md">
@@ -238,7 +259,7 @@ export function NfeComparator() {
                                             </TableHeader>
                                             <TableBody>
                                                 {nfe.products.map((prod) => (
-                                                    <TableRow key={`${nfe.name}-${prod.code}`}>
+                                                    <TableRow key={`${nfe.id}-${prod.code}`}>
                                                         <TableCell className="font-mono text-xs">{prod.code}</TableCell>
                                                         <TableCell>{prod.description}</TableCell>
                                                         <TableCell className="text-right">{formatNumber(prod.quantity)}</TableCell>
@@ -285,9 +306,9 @@ export function NfeComparator() {
                                         <TableCell>
                                             <div className="flex flex-col gap-1">
                                                 {item.occurrences.map((occ, index) => (
-                                                    <div key={index} className="text-xs p-1 rounded-md bg-muted/50 truncate">
-                                                        <span className="font-semibold">{occ.fileName}:</span> 
-                                                        <span> Qtde: {formatNumber(occ.quantity)} | </span> 
+                                                    <div key={index} className="text-xs p-1 rounded-md bg-muted/50 truncate" title={`${occ.emitterName} - NF-e: ${occ.nfeNumber}`}>
+                                                        <span className="font-semibold">{occ.emitterName} (NF-e: {occ.nfeNumber}):</span> 
+                                                        <span className="ml-1"> Qtde: {formatNumber(occ.quantity)} | </span> 
                                                         <span>Custo: {formatCurrency(occ.unitCost, 4)}</span>
                                                     </div>
                                                 ))}
