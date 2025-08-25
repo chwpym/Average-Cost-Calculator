@@ -56,7 +56,8 @@ export function CostAnalysisCalculator() {
                 if (!dets || !total) {
                     throw new Error("Estrutura do XML da NF-e inválida: <det> ou <ICMSTot> não encontrados.");
                 }
-
+                
+                // Valores totais do cabeçalho da NF-e para rateio
                 const totalProdValue = parseFloat(total.vProd) || 0;
                 const totalIPI = parseFloat(total.vIPI) || 0;
                 const totalST = parseFloat(total.vST) || 0;
@@ -75,15 +76,19 @@ export function CostAnalysisCalculator() {
                     
                     const itemWeight = totalProdValue > 0 ? itemTotalCost / totalProdValue : 0;
 
-                    const ipiRateado = (imposto?.IPI?.IPITrib?.vIPI || 0) + (totalIPI * itemWeight);
-                    const stRateado = (imposto?.ICMS?.ICMSST?.vICMSST || 0) + (totalST * itemWeight);
+                    // IPI: usa o valor do item ou rateia o total
+                    const ipiValor = imposto?.IPI?.IPITrib?.vIPI || 0;
+
+                    // ICMS-ST: usa o valor do item ou rateia o total
+                    const stValor = imposto?.ICMS?.ICMSST?.vICMSST || 0;
+                   
+                    // Rateio dos valores do cabeçalho
                     const freteRateado = (prod.vFrete || 0) + (totalFrete * itemWeight);
                     const seguroRateado = (prod.vSeg || 0) + (totalSeguro * itemWeight);
                     const outrasRateado = (prod.vOutro || 0) + (totalOutras * itemWeight);
                     const descontoRateado = (prod.vDesc || 0) + (totalDesconto * itemWeight);
-
                     
-                    const finalTotalCost = itemTotalCost + ipiRateado + stRateado + freteRateado + seguroRateado + outrasRateado - descontoRateado;
+                    const finalTotalCost = itemTotalCost + ipiValor + stValor + freteRateado + seguroRateado + outrasRateado - descontoRateado;
                     const finalUnitCost = quantity > 0 ? finalTotalCost / quantity : 0;
                     
                     return {
@@ -92,8 +97,8 @@ export function CostAnalysisCalculator() {
                         quantity: quantity,
                         unitCost: unitCost,
                         totalCost: itemTotalCost,
-                        ipi: ipiRateado,
-                        icmsST: stRateado,
+                        ipi: ipiValor,
+                        icmsST: stValor,
                         frete: freteRateado,
                         seguro: seguroRateado,
                         desconto: descontoRateado,
@@ -288,5 +293,3 @@ export function CostAnalysisCalculator() {
         </div>
     );
 }
-
-    
