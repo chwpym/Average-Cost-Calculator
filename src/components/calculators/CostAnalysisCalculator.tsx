@@ -77,6 +77,9 @@ export function CostAnalysisCalculator() {
                 const totalSeguro = parseFloat(total.vSeg) || 0;
                 const totalDesconto = parseFloat(total.vDesc) || 0;
                 const totalOutras = parseFloat(total.vOutro) || 0;
+                const totalST = parseFloat(total.vST) || 0;
+                const totalIPI = parseFloat(total.vIPI) || 0;
+
 
                 const newItems: AnalyzedItem[] = dets.map((det: any, index: number) => {
                     const prod = det.prod;
@@ -88,13 +91,13 @@ export function CostAnalysisCalculator() {
                     
                     const itemWeight = totalProdValue > 0 ? itemTotalCost / totalProdValue : 0;
 
-                    const ipiValor = imposto?.IPI?.IPITrib?.vIPI || 0;
-                    const stValor = imposto?.ICMS?.ICMSST?.vICMSST || 0;
+                    const ipiValor = imposto?.IPI?.IPITrib?.vIPI || (totalIPI * itemWeight) || 0;
+                    const stValor = imposto?.ICMS?.ICMSST?.vICMSST || (totalST * itemWeight) || 0;
                     
-                    const freteRateado = parseFloat(prod.vFrete) || (totalFrete * itemWeight);
-                    const seguroRateado = parseFloat(prod.vSeg) || (totalSeguro * itemWeight);
-                    const descontoRateado = parseFloat(prod.vDesc) || (totalDesconto * itemWeight);
-                    const outrasRateado = parseFloat(prod.vOutro) || (totalOutras * itemWeight);
+                    const freteRateado = parseFloat(prod.vFrete) || (totalFrete * itemWeight) || 0;
+                    const seguroRateado = parseFloat(prod.vSeg) || (totalSeguro * itemWeight) || 0;
+                    const descontoRateado = parseFloat(prod.vDesc) || (totalDesconto * itemWeight) || 0;
+                    const outrasRateado = parseFloat(prod.vOutro) || (totalOutras * itemWeight) || 0;
                     
                     const finalTotalCost = itemTotalCost + ipiValor + stValor + freteRateado + seguroRateado + outrasRateado - descontoRateado;
                     const finalUnitCost = quantity > 0 ? finalTotalCost / quantity : 0;
@@ -209,12 +212,17 @@ export function CostAnalysisCalculator() {
                     { content: formatCurrency(totals.finalTotalCost), styles: { fontStyle: 'bold', fillColor: [232, 245, 233] } },
                 ]
             ],
+            showFoot: 'lastPage',
             headStyles: { fillColor: [63, 81, 181] },
             footStyles: { fillColor: [224, 224, 224], textColor: [0,0,0], fontStyle: 'bold' },
             didDrawPage: (data) => {
+                // Footer
+                const pageCount = doc.internal.getNumberOfPages();
+                doc.setFontSize(8);
+                const pageText = `Página ${data.pageNumber} de ${pageCount}`;
+                doc.text(pageText, data.settings.margin.left, doc.internal.pageSize.height - 10);
                 if (fileName) {
-                    doc.setFontSize(8);
-                    doc.text(`Arquivo: ${fileName}`, 14, doc.internal.pageSize.height - 10);
+                    doc.text(`Arquivo: ${fileName}`, doc.internal.pageSize.width - data.settings.margin.right, doc.internal.pageSize.height - 10, { align: 'right' });
                 }
             }
         });
@@ -252,6 +260,17 @@ export function CostAnalysisCalculator() {
                     accept=".xml"
                 />
             </div>
+
+            {nfeInfo && items.length > 0 && (
+                <div className="p-4 border rounded-lg bg-muted/50 space-y-2">
+                    <h3 className="text-lg font-medium">Informações da NF-e</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2 text-sm">
+                        <div><strong>Emitente:</strong> {nfeInfo.emitterName}</div>
+                        <div><strong>CNPJ:</strong> {nfeInfo.emitterCnpj}</div>
+                        <div><strong>NF-e Nº:</strong> {nfeInfo.nfeNumber}</div>
+                    </div>
+                </div>
+            )}
 
             {items.length > 0 && (
                  <div className="w-full overflow-x-auto">
@@ -310,5 +329,3 @@ export function CostAnalysisCalculator() {
         </div>
     );
 }
-
-    
