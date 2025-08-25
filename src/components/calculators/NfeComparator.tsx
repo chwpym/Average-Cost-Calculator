@@ -41,7 +41,6 @@ export function NfeComparator() {
         const allProductsMap = new Map<string, ComparedProduct>();
         const newLoadedFiles: LoadedFile[] = [];
         let filesProcessed = 0;
-        let productsInMultipleFiles = 0;
 
         // Limpa os dados anteriores para uma nova comparação
         setComparedProducts([]);
@@ -99,7 +98,7 @@ export function NfeComparator() {
                             .filter(p => p.occurrences.length > 1)
                             .sort((a, b) => b.occurrences.length - a.occurrences.length || b.totalQuantity - a.totalQuantity);
                         
-                        productsInMultipleFiles = sortedProducts.length;
+                        const productsInMultipleFiles = sortedProducts.length;
                         setComparedProducts(sortedProducts);
                         setLoadedFiles(newLoadedFiles);
                         toast({
