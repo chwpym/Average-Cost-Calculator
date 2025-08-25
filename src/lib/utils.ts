@@ -5,11 +5,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export const formatCurrency = (value: number) => {
+export const formatCurrency = (value: number, minimumFractionDigits = 2) => {
   if (isNaN(value)) return "R$ 0,00";
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
+    minimumFractionDigits: minimumFractionDigits,
+    maximumFractionDigits: minimumFractionDigits,
   }).format(value);
 };
 
@@ -21,3 +23,5 @@ export const formatNumber = (value: number, minimumFractionDigits = 0, suffix = 
     }).format(value);
     return `${formatted}${suffix}`;
 };
+
+    
