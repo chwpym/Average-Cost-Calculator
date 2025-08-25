@@ -4,13 +4,15 @@ import { useState, useRef, useCallback, useMemo } from "react";
 import { XMLParser } from "fast-xml-parser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, Trash2, GitCompareArrows } from "lucide-react";
+import { Upload, Trash2, GitCompareArrows, Bot } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { groupProducts, ProductInput, ProductGroup } from "@/ai/flows/group-products-flow";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 
 interface Product {
     code: string;
@@ -27,22 +29,10 @@ interface LoadedNfe {
     products: Product[];
 }
 
-interface ComparedProduct {
-    code: string;
-    description: string;
-    totalQuantity: number;
-    count: number;
-    occurrences: Array<{
-        nfeNumber: string;
-        emitterName: string;
-        quantity: number;
-        unitCost: number;
-    }>;
-}
-
 export function NfeComparator() {
     const [loadedNfes, setLoadedNfes] = useState<LoadedNfe[]>([]);
-    const [comparisonResult, setComparisonResult] = useState<ComparedProduct[]>([]);
+    const [comparisonResult, setComparisonResult] = useState<ProductGroup[]>([]);
+    const [isComparing, setIsComparing] = useState(false);
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -152,47 +142,52 @@ export function NfeComparator() {
         }
     };
 
-    const handleCompare = useCallback(() => {
-        const productMap = new Map<string, ComparedProduct>();
-
-        loadedNfes.forEach(nfe => {
-            nfe.products.forEach(product => {
-                if (productMap.has(product.code)) {
-                    const existing = productMap.get(product.code)!;
-                    existing.count += 1;
-                    existing.totalQuantity += product.quantity;
-                    existing.occurrences.push({
-                        nfeNumber: nfe.nfeNumber,
-                        emitterName: nfe.emitterName,
-                        quantity: product.quantity,
-                        unitCost: product.unitCost,
-                    });
-                } else {
-                    productMap.set(product.code, {
-                        code: product.code,
-                        description: product.description,
-                        totalQuantity: product.quantity,
-                        count: 1,
-                        occurrences: [{
-                            nfeNumber: nfe.nfeNumber,
-                            emitterName: nfe.emitterName,
-                            quantity: product.quantity,
-                            unitCost: product.unitCost,
-                        }],
-                    });
-                }
+    const handleCompare = useCallback(async () => {
+        if (loadedNfes.length < 2) {
+            toast({
+                variant: "destructive",
+                title: "Poucos arquivos",
+                description: "É necessário carregar pelo menos 2 NF-es para comparar.",
             });
-        });
+            return;
+        }
 
-        const duplicates = Array.from(productMap.values()).filter(p => p.count > 1);
-        duplicates.sort((a, b) => b.count - a.count || a.description.localeCompare(b.description));
+        setIsComparing(true);
+        setComparisonResult([]);
 
-        setComparisonResult(duplicates);
+        try {
+            const allProducts: ProductInput[] = loadedNfes.flatMap(nfe => 
+                nfe.products.map(p => ({
+                    ...p,
+                    nfeId: nfe.id,
+                    nfeNumber: nfe.nfeNumber,
+                    emitterName: nfe.emitterName
+                }))
+            );
+            
+            const groupedProducts = await groupProducts({ products: allProducts });
+            
+            const duplicates = groupedProducts.filter(g => g.items.length > 1);
 
-        toast({
-            title: "Comparação Concluída",
-            description: `${duplicates.length} produto(s) encontrado(s) em mais de uma NF-e.`
-        })
+            duplicates.sort((a, b) => b.items.length - a.length || a.canonicalDescription.localeCompare(b.canonicalDescription));
+            
+            setComparisonResult(duplicates);
+
+            toast({
+                title: "Comparação Concluída",
+                description: `${duplicates.length} produto(s) encontrado(s) em mais de uma NF-e.`
+            });
+
+        } catch (error) {
+            console.error("Erro na comparação com IA:", error);
+            toast({
+                variant: "destructive",
+                title: "Erro na Comparação",
+                description: "Ocorreu um erro ao tentar agrupar os produtos com a IA. Tente novamente.",
+            });
+        } finally {
+            setIsComparing(false);
+        }
     }, [loadedNfes, toast]);
 
 
@@ -205,21 +200,25 @@ export function NfeComparator() {
         toast({ title: "Dados limpos", description: "A área de comparação está pronta para novos arquivos." });
     }, [toast]);
 
+    const totalQuantityForGroup = (group: ProductGroup) => {
+        return group.items.reduce((sum, item) => sum + item.quantity, 0);
+    }
+
     return (
         <div className="space-y-4">
             <div className="flex flex-wrap gap-2 items-center">
-                <Button onClick={() => fileInputRef.current?.click()}>
+                <Button onClick={() => fileInputRef.current?.click()} disabled={isComparing}>
                     <Upload className="mr-2 h-4 w-4" />
                     Importar Arquivos XML
                 </Button>
                 {loadedNfes.length > 1 && (
-                     <Button onClick={handleCompare} variant="secondary">
+                     <Button onClick={handleCompare} variant="secondary" disabled={isComparing}>
                         <GitCompareArrows className="mr-2 h-4 w-4" />
-                        Comparar Produtos
+                        {isComparing ? 'Comparando...' : 'Comparar Produtos'}
                     </Button>
                 )}
                 {loadedNfes.length > 0 && (
-                    <Button onClick={clearData} variant="destructive">
+                    <Button onClick={clearData} variant="destructive" disabled={isComparing}>
                         <Trash2 className="mr-2 h-4 w-4" />
                         Limpar Dados
                     </Button>
@@ -231,8 +230,18 @@ export function NfeComparator() {
                     className="hidden" 
                     accept=".xml"
                     multiple
+                    disabled={isComparing}
                 />
             </div>
+            
+            <Alert>
+                <Bot className="h-4 w-4" />
+                <AlertTitle>Comparação Inteligente</AlertTitle>
+                <AlertDescription>
+                   Esta ferramenta usa Inteligência Artificial para analisar as descrições e agrupar produtos similares, mesmo que tenham códigos ou nomes ligeiramente diferentes entre as notas fiscais.
+                </AlertDescription>
+            </Alert>
+
 
             {loadedNfes.length > 0 && (
                 <div className="space-y-2 p-4 border rounded-lg bg-muted/50">
@@ -276,40 +285,51 @@ export function NfeComparator() {
                 </div>
             )}
 
+            {isComparing && (
+                <div className="flex items-center justify-center p-8">
+                    <Bot className="h-8 w-8 animate-spin mr-4" />
+                    <p className="text-lg">Aguarde, a IA está analisando e agrupando seus produtos...</p>
+                </div>
+            )}
+
             {comparisonResult.length > 0 && (
                 <Card>
                     <CardHeader>
-                        <CardTitle>Resultados da Comparação</CardTitle>
+                        <CardTitle>Resultados da Comparação Inteligente</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="w-full overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Produto</TableHead>
+                                    <TableHead>Produto (Agrupado por IA)</TableHead>
                                     <TableHead className="text-center">Encontrado em</TableHead>
                                     <TableHead className="text-right">Qtde Total</TableHead>
-                                    <TableHead>Detalhes por NF-e</TableHead>
+                                    <TableHead>Ocorrências nas NF-es</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {comparisonResult.map(item => (
-                                    <TableRow key={item.code}>
+                                {comparisonResult.map((group, groupIndex) => (
+                                    <TableRow key={groupIndex}>
                                         <TableCell>
-                                            <div className="font-medium">{item.description}</div>
-                                            <div className="font-mono text-xs text-muted-foreground">{item.code}</div>
+                                            <div className="font-medium">{group.canonicalDescription}</div>
+                                            <div className="text-xs text-muted-foreground">({group.items.length} variações)</div>
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            <Badge variant="secondary">{item.count} NF-es</Badge>
+                                            <Badge variant="secondary">{group.items.length} NF-es</Badge>
                                         </TableCell>
-                                        <TableCell className="text-right font-bold">{formatNumber(item.totalQuantity)}</TableCell>
+                                        <TableCell className="text-right font-bold">{formatNumber(totalQuantityForGroup(group))}</TableCell>
                                         <TableCell>
                                             <div className="flex flex-col gap-1">
-                                                {item.occurrences.map((occ, index) => (
-                                                    <div key={index} className="text-xs p-1 rounded-md bg-muted/50 truncate" title={`${occ.emitterName} - NF-e: ${occ.nfeNumber}`}>
-                                                        <span className="font-semibold">{occ.emitterName} (NF-e: {occ.nfeNumber}):</span> 
-                                                        <span className="ml-1"> Qtde: {formatNumber(occ.quantity)} | </span> 
-                                                        <span>Custo: {formatCurrency(occ.unitCost, 4)}</span>
+                                                {group.items.map((item, itemIndex) => (
+                                                    <div key={itemIndex} className="text-xs p-2 rounded-md bg-muted/50" title={`${item.emitterName} - NF-e: ${item.nfeNumber}`}>
+                                                       <p className="font-semibold">{item.emitterName}</p>
+                                                       <p className="text-muted-foreground">"{item.description}"</p>
+                                                       <div className="flex justify-between mt-1">
+                                                            <span>NF-e: {item.nfeNumber}</span>
+                                                            <span>Qtde: {formatNumber(item.quantity)}</span>
+                                                            <span>Custo: {formatCurrency(item.unitCost, 4)}</span>
+                                                       </div>
                                                     </div>
                                                 ))}
                                             </div>
