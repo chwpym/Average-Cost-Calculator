@@ -5,15 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 export default function CostAnalysisPage() {
     return (
         <AppLayout title="Análise de Custo por NF-e">
-             <Card className="shadow-lg">
-                <CardHeader>
-                    <CardTitle>Análise de Custo por NF-e</CardTitle>
-                    <CardDescription>Importe o XML de uma NF-e para calcular o custo real dos seus produtos, incluindo impostos e frete.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <CostAnalysisCalculator />
-                </CardContent>
-            </Card>
+            <div className="space-y-4">
+                <div>
+                    <h2 className="text-xl font-semibold">Análise de Custo por NF-e</h2>
+                    <p className="text-muted-foreground">Importe o XML de uma NF-e para calcular o custo real dos seus produtos, incluindo impostos e frete.</p>
+                </div>
+                <CostAnalysisCalculator />
+            </div>
         </AppLayout>
     );
 }
