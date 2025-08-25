@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Calculator, ShoppingCart, Percent, Bot, Plus, FileScan, Tag, DivideCircle } from 'lucide-react';
+import { Calculator, ShoppingCart, Percent, Bot, Plus, FileScan, Tag, DivideCircle, Files } from 'lucide-react';
 
 const calculators = [
   {
@@ -46,6 +46,12 @@ const calculators = [
     icon: FileScan,
     title: 'Análise de Custo por NF-e',
     description: 'Importe uma NF-e para calcular o custo real dos produtos.',
+  },
+  {
+    href: '/compare-nfe',
+    icon: Files,
+    title: 'Comparador de NF-e',
+    description: 'Compare produtos entre múltiplos arquivos XML de NF-e.',
   },
 ];
 

@@ -8,7 +8,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Menu, Calculator, ShoppingCart, Percent, Bot, Plus, FileScan, Tag, DivideCircle } from "lucide-react";
+import { Menu, Calculator, ShoppingCart, Percent, Bot, Plus, FileScan, Tag, DivideCircle, Files } from "lucide-react";
 import Link from "next/link";
 
 const calculators = [
@@ -46,6 +46,11 @@ const calculators = [
       href: '/cost-analysis',
       icon: FileScan,
       title: 'Análise de Custo por NF-e',
+    },
+    {
+      href: '/compare-nfe',
+      icon: Files,
+      title: 'Comparador de NF-e',
     },
 ];
 
