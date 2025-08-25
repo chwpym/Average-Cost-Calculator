@@ -80,7 +80,6 @@ export function CostAnalysisCalculator() {
                     const freteRateado = (prod.vFrete || 0) + (totalFrete * itemWeight);
                     const seguroRateado = (prod.vSeg || 0) + (totalSeguro * itemWeight);
                     const outrasRateado = (prod.vOutro || 0) + (totalOutras * itemWeight);
-                    // Desconto é subtraído
                     const descontoRateado = (prod.vDesc || 0) + (totalDesconto * itemWeight);
 
                     
@@ -203,93 +202,91 @@ export function CostAnalysisCalculator() {
 
 
     return (
-        <div className="pt-4 space-y-4">
-            <div className="p-4 border rounded-lg bg-card text-card-foreground shadow-sm">
-                <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-                    <Button onClick={() => fileInputRef.current?.click()}>
-                        <Upload className="mr-2" />
-                        Importar XML da NF-e
+        <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-center">
+                <Button onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Importar XML da NF-e
+                </Button>
+                {items.length > 0 && (
+                    <Button onClick={generatePdf} variant="secondary">
+                        <Printer className="mr-2 h-4 w-4" />
+                        Gerar PDF
                     </Button>
-                    {items.length > 0 && (
-                        <Button onClick={generatePdf} variant="secondary">
-                            <Printer className="mr-2 h-4 w-4" />
-                            Gerar PDF
+                )}
+                {fileName && (
+                    <div className="flex items-center gap-2 p-2 border rounded-md bg-muted flex-1 sm:flex-none justify-between">
+                        <span className="text-sm text-muted-foreground truncate" title={fileName}>{fileName}</span>
+                        <Button variant="ghost" size="icon" onClick={clearData} className="h-6 w-6">
+                        <FileX className="h-4 w-4 text-destructive" />
                         </Button>
-                    )}
-                    {fileName && (
-                        <div className="flex items-center gap-2 p-2 border rounded-md bg-muted">
-                            <span className="text-sm text-muted-foreground">{fileName}</span>
-                            <Button variant="ghost" size="icon" onClick={clearData} className="h-6 w-6">
-                            <FileX className="h-4 w-4 text-destructive" />
-                            </Button>
-                        </div>
-                    )}
-                    <Input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        onChange={handleImportXml}
-                        className="hidden" 
-                        accept=".xml"
-                    />
-                </div>
+                    </div>
+                )}
+                <Input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleImportXml}
+                    className="hidden" 
+                    accept=".xml"
+                />
             </div>
 
             {items.length > 0 && (
-                 <div className="p-4 border rounded-lg bg-card text-card-foreground shadow-sm">
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="min-w-[200px]">Descrição</TableHead>
-                                    <TableHead>Qtde</TableHead>
-                                    <TableHead>Custo Un. Orig.</TableHead>
-                                    <TableHead>Custo Total Orig.</TableHead>
-                                    <TableHead>IPI</TableHead>
-                                    <TableHead>ICMS-ST</TableHead>
-                                    <TableHead>Frete</TableHead>
-                                    <TableHead>Seguro</TableHead>
-                                    <TableHead>Desconto</TableHead>
-                                    <TableHead>Outras</TableHead>
-                                    <TableHead className="text-primary font-bold">Custo Un. Final</TableHead>
-                                    <TableHead className="text-primary font-bold">Custo Total Final</TableHead>
+                 <div className="w-full overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="min-w-[250px] sticky left-0 bg-background z-10">Descrição</TableHead>
+                                <TableHead className="text-right">Qtde</TableHead>
+                                <TableHead className="text-right">Custo Un. Orig.</TableHead>
+                                <TableHead className="text-right">Custo Total Orig.</TableHead>
+                                <TableHead className="text-right">IPI</TableHead>
+                                <TableHead className="text-right">ICMS-ST</TableHead>
+                                <TableHead className="text-right">Frete</TableHead>
+                                <TableHead className="text-right">Seguro</TableHead>
+                                <TableHead className="text-right">Desconto</TableHead>
+                                <TableHead className="text-right">Outras</TableHead>
+                                <TableHead className="text-right text-primary font-bold">Custo Un. Final</TableHead>
+                                <TableHead className="text-right text-primary font-bold">Custo Total Final</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {items.map(item => (
+                                <TableRow key={item.id}>
+                                    <TableCell className="font-medium text-xs sticky left-0 bg-background z-10">{item.description}</TableCell>
+                                    <TableCell className="text-right">{formatNumber(item.quantity, 0)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(item.unitCost, 4)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(item.totalCost)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(item.ipi)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(item.icmsST)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(item.frete)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(item.seguro)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(item.desconto)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(item.outras)}</TableCell>
+                                    <TableCell className="text-right font-bold">{formatCurrency(item.finalUnitCost, 4)}</TableCell>
+                                    <TableCell className="text-right font-bold">{formatCurrency(item.finalTotalCost)}</TableCell>
                                 </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {items.map(item => (
-                                    <TableRow key={item.id}>
-                                        <TableCell className="font-medium text-xs">{item.description}</TableCell>
-                                        <TableCell>{formatNumber(item.quantity, 0)}</TableCell>
-                                        <TableCell>{formatCurrency(item.unitCost, 4)}</TableCell>
-                                        <TableCell>{formatCurrency(item.totalCost)}</TableCell>
-                                        <TableCell>{formatCurrency(item.ipi)}</TableCell>
-                                        <TableCell>{formatCurrency(item.icmsST)}</TableCell>
-                                        <TableCell>{formatCurrency(item.frete)}</TableCell>
-                                        <TableCell>{formatCurrency(item.seguro)}</TableCell>
-                                        <TableCell>{formatCurrency(item.desconto)}</TableCell>
-                                        <TableCell>{formatCurrency(item.outras)}</TableCell>
-                                        <TableCell className="font-bold">{formatCurrency(item.finalUnitCost, 4)}</TableCell>
-                                        <TableCell className="font-bold">{formatCurrency(item.finalTotalCost)}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                            <TableFooter>
-                                <TableRow className="font-bold">
-                                    <TableCell colSpan={3} className="text-right">Totais:</TableCell>
-                                    <TableCell>{formatCurrency(totals.totalCost)}</TableCell>
-                                    <TableCell>{formatCurrency(totals.totalIPI)}</TableCell>
-                                    <TableCell>{formatCurrency(totals.totalST)}</TableCell>
-                                    <TableCell>{formatCurrency(totals.totalFrete)}</TableCell>
-                                    <TableCell>{formatCurrency(totals.totalSeguro)}</TableCell>
-                                    <TableCell>{formatCurrency(totals.totalDesconto)}</TableCell>
-                                    <TableCell>{formatCurrency(totals.totalOutras)}</TableCell>
-                                    <TableCell></TableCell>
-                                    <TableCell className="text-primary">{formatCurrency(totals.finalTotalCost)}</TableCell>
-                                </TableRow>
-                            </TableFooter>
-                        </Table>
-                    </div>
+                            ))}
+                        </TableBody>
+                        <TableFooter>
+                            <TableRow className="font-bold bg-muted/50">
+                                <TableCell className="sticky left-0 bg-muted/50 z-10 text-right" colSpan={3}>Totais:</TableCell>
+                                <TableCell className="text-right">{formatCurrency(totals.totalCost)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(totals.totalIPI)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(totals.totalST)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(totals.totalFrete)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(totals.totalSeguro)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(totals.totalDesconto)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(totals.totalOutras)}</TableCell>
+                                <TableCell></TableCell>
+                                <TableCell className="text-right text-primary">{formatCurrency(totals.finalTotalCost)}</TableCell>
+                            </TableRow>
+                        </TableFooter>
+                    </Table>
                 </div>
             )}
         </div>
     );
 }
+
+    
