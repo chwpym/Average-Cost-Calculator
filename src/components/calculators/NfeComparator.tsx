@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { XMLParser } from "fast-xml-parser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, Trash2 } from "lucide-react";
+import { Upload, Trash2, GitCompareArrows } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Product {
     code: string;
@@ -22,8 +24,21 @@ interface LoadedNfe {
     products: Product[];
 }
 
+interface ComparedProduct {
+    code: string;
+    description: string;
+    totalQuantity: number;
+    count: number;
+    occurrences: Array<{
+        fileName: string;
+        quantity: number;
+        unitCost: number;
+    }>;
+}
+
 export function NfeComparator() {
     const [loadedNfes, setLoadedNfes] = useState<LoadedNfe[]>([]);
+    const [comparisonResult, setComparisonResult] = useState<ComparedProduct[]>([]);
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -31,7 +46,6 @@ export function NfeComparator() {
         if (!files || files.length === 0) return;
 
         const filePromises = Array.from(files).map(file => {
-            // Ignora arquivos já carregados
             if (loadedNfes.some(nfe => nfe.name === file.name)) {
                 console.log(`Arquivo ${file.name} já carregado.`);
                 return Promise.resolve(null);
@@ -121,8 +135,51 @@ export function NfeComparator() {
         }
     };
 
+    const handleCompare = useCallback(() => {
+        const productMap = new Map<string, ComparedProduct>();
+
+        loadedNfes.forEach(nfe => {
+            nfe.products.forEach(product => {
+                if (productMap.has(product.code)) {
+                    const existing = productMap.get(product.code)!;
+                    existing.count += 1;
+                    existing.totalQuantity += product.quantity;
+                    existing.occurrences.push({
+                        fileName: nfe.name,
+                        quantity: product.quantity,
+                        unitCost: product.unitCost,
+                    });
+                } else {
+                    productMap.set(product.code, {
+                        code: product.code,
+                        description: product.description,
+                        totalQuantity: product.quantity,
+                        count: 1,
+                        occurrences: [{
+                            fileName: nfe.name,
+                            quantity: product.quantity,
+                            unitCost: product.unitCost,
+                        }],
+                    });
+                }
+            });
+        });
+
+        const duplicates = Array.from(productMap.values()).filter(p => p.count > 1);
+        duplicates.sort((a, b) => b.count - a.count);
+
+        setComparisonResult(duplicates);
+
+        toast({
+            title: "Comparação Concluída",
+            description: `${duplicates.length} produto(s) encontrado(s) em mais de uma NF-e.`
+        })
+    }, [loadedNfes, toast]);
+
+
     const clearData = useCallback(() => {
         setLoadedNfes([]);
+        setComparisonResult([]);
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
@@ -136,6 +193,12 @@ export function NfeComparator() {
                     <Upload className="mr-2 h-4 w-4" />
                     Importar Arquivos XML
                 </Button>
+                {loadedNfes.length > 1 && (
+                     <Button onClick={handleCompare} variant="secondary">
+                        <GitCompareArrows className="mr-2 h-4 w-4" />
+                        Comparar Produtos
+                    </Button>
+                )}
                 {loadedNfes.length > 0 && (
                     <Button onClick={clearData} variant="destructive">
                         <Trash2 className="mr-2 h-4 w-4" />
@@ -190,6 +253,53 @@ export function NfeComparator() {
                         ))}
                     </Accordion>
                 </div>
+            )}
+
+            {comparisonResult.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Resultados da Comparação</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="w-full overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Produto</TableHead>
+                                    <TableHead className="text-center">Encontrado em</TableHead>
+                                    <TableHead className="text-right">Qtde Total</TableHead>
+                                    <TableHead>Detalhes por NF-e</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {comparisonResult.map(item => (
+                                    <TableRow key={item.code}>
+                                        <TableCell>
+                                            <div className="font-medium">{item.description}</div>
+                                            <div className="font-mono text-xs text-muted-foreground">{item.code}</div>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <Badge variant="secondary">{item.count} NF-es</Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right font-bold">{formatNumber(item.totalQuantity)}</TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col gap-1">
+                                                {item.occurrences.map((occ, index) => (
+                                                    <div key={index} className="text-xs p-1 rounded-md bg-muted/50 truncate">
+                                                        <span className="font-semibold">{occ.fileName}:</span> 
+                                                        <span> Qtde: {formatNumber(occ.quantity)} | </span> 
+                                                        <span>Custo: {formatCurrency(occ.unitCost, 4)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                        </div>
+                    </CardContent>
+                </Card>
             )}
         </div>
     );
