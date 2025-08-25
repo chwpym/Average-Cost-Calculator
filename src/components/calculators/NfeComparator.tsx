@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback } from "react";
 import { XMLParser } from "fast-xml-parser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,62 +30,84 @@ export function NfeComparator() {
     const processFiles = useCallback((files: FileList) => {
         if (!files || files.length === 0) return;
 
-        const newNfes: LoadedNfe[] = [...loadedNfes];
-        let filesProcessed = 0;
-
-        Array.from(files).forEach(file => {
+        const filePromises = Array.from(files).map(file => {
+            // Ignora arquivos já carregados
             if (loadedNfes.some(nfe => nfe.name === file.name)) {
-                filesProcessed++;
-                if (filesProcessed === files.length) {
-                    toast({ title: "Aviso", description: "Alguns arquivos já haviam sido carregados e foram ignorados." });
-                }
-                return;
+                console.log(`Arquivo ${file.name} já carregado.`);
+                return Promise.resolve(null);
             }
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const xmlData = e.target?.result as string;
-                    const parser = new XMLParser({ ignoreAttributes: false, parseAttributeValue: true });
-                    const jsonObj = parser.parse(xmlData);
+            return new Promise<LoadedNfe | null>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const xmlData = e.target?.result as string;
+                        const parser = new XMLParser({ ignoreAttributes: false, parseAttributeValue: true });
+                        const jsonObj = parser.parse(xmlData);
 
-                    const infNFe = jsonObj?.nfeProc?.NFe?.infNFe || jsonObj?.NFe?.infNFe;
-                    if (!infNFe) {
-                        throw new Error(`Estrutura inválida no arquivo ${file.name}`);
+                        const infNFe = jsonObj?.nfeProc?.NFe?.infNFe || jsonObj?.NFe?.infNFe;
+                        if (!infNFe) {
+                            throw new Error(`Estrutura inválida no arquivo ${file.name}`);
+                        }
+
+                        const dets = Array.isArray(infNFe.det) ? infNFe.det : [infNFe.det];
+                        
+                        const products: Product[] = dets.map((det: any) => {
+                            const prod = det.prod;
+                            return {
+                                code: String(prod.cProd),
+                                description: prod.xProd || "Sem descrição",
+                                quantity: parseFloat(prod.qCom) || 0,
+                                unitCost: parseFloat(prod.vUnCom) || 0,
+                            };
+                        });
+
+                        resolve({ name: file.name, products });
+
+                    } catch (error: any) {
+                        reject({fileName: file.name, message: error.message});
                     }
+                };
+                reader.onerror = (error) => reject({fileName: file.name, message: "Falha ao ler o arquivo."});
+                reader.readAsText(file, 'ISO-8859-1');
+            });
+        });
 
-                    const dets = Array.isArray(infNFe.det) ? infNFe.det : [infNFe.det];
-                    
-                    const products: Product[] = dets.map((det: any) => {
-                        const prod = det.prod;
-                        return {
-                            code: String(prod.cProd),
-                            description: prod.xProd || "Sem descrição",
-                            quantity: parseFloat(prod.qCom) || 0,
-                            unitCost: parseFloat(prod.vUnCom) || 0,
-                        };
-                    });
+        Promise.allSettled(filePromises).then(results => {
+            const newNfes: LoadedNfe[] = [];
+            let filesAddedCount = 0;
+            let filesFailedCount = 0;
 
-                    newNfes.push({ name: file.name, products });
-
-                } catch (error: any) {
+            results.forEach(result => {
+                if (result.status === 'fulfilled' && result.value) {
+                    newNfes.push(result.value);
+                    filesAddedCount++;
+                } else if (result.status === 'rejected') {
+                    filesFailedCount++;
                     toast({
                         variant: "destructive",
                         title: "Erro de Importação",
-                        description: `Falha ao processar ${file.name}: ${error.message}`,
+                        description: `Falha ao processar ${result.reason.fileName}: ${result.reason.message}`,
                     });
-                } finally {
-                    filesProcessed++;
-                    if (filesProcessed === files.length) {
-                        setLoadedNfes(newNfes);
-                        toast({
-                            title: "Sucesso!",
-                            description: `${files.length} arquivo(s) processado(s).`,
-                        });
-                    }
                 }
-            };
-            reader.readAsText(file, 'ISO-8859-1');
+            });
+
+            if (newNfes.length > 0) {
+                setLoadedNfes(prev => [...prev, ...newNfes]);
+            }
+
+            if(filesAddedCount > 0) {
+                 toast({
+                    title: "Sucesso!",
+                    description: `${filesAddedCount} novo(s) arquivo(s) carregado(s).`,
+                });
+            }
+             if (files.length > (filesAddedCount + filesFailedCount)) {
+                toast({
+                    title: "Aviso",
+                    description: "Alguns arquivos já haviam sido carregados e foram ignorados.",
+                });
+            }
         });
 
     }, [loadedNfes, toast]);
@@ -106,32 +128,6 @@ export function NfeComparator() {
         }
         toast({ title: "Dados limpos", description: "A área de comparação está pronta para novos arquivos." });
     }, [toast]);
-    
-    // TODO: Implement comparison logic
-    const comparedProducts = useMemo(() => {
-        const productMap = new Map<string, { description: string; totalQuantity: number; occurrences: any[] }>();
-
-        loadedNfes.forEach(nfe => {
-            nfe.products.forEach(product => {
-                const key = product.code;
-                if(productMap.has(key)){
-                    const existing = productMap.get(key)!;
-                    existing.totalQuantity += product.quantity;
-                    existing.occurrences.push({ fileName: nfe.name, quantity: product.quantity, unitCost: product.unitCost });
-                } else {
-                    productMap.set(key, {
-                        description: product.description,
-                        totalQuantity: product.quantity,
-                        occurrences: [{ fileName: nfe.name, quantity: product.quantity, unitCost: product.unitCost }]
-                    });
-                }
-            });
-        });
-
-        return Array.from(productMap.values()).filter(p => p.occurrences.length > 1);
-
-    }, [loadedNfes]);
-
 
     return (
         <div className="space-y-4">
@@ -159,11 +155,11 @@ export function NfeComparator() {
             {loadedNfes.length > 0 && (
                 <div className="space-y-2 p-4 border rounded-lg bg-muted/50">
                     <h3 className="text-lg font-medium">Arquivos Carregados ({loadedNfes.length}):</h3>
-                     <Accordion type="single" collapsible className="w-full">
+                     <Accordion type="multiple" className="w-full">
                         {loadedNfes.map((nfe) => (
                             <AccordionItem value={nfe.name} key={nfe.name}>
                                 <AccordionTrigger>
-                                    <span className="font-medium">{nfe.name}</span>
+                                    <span className="font-medium text-left">{nfe.name}</span>
                                     <span className="text-sm text-muted-foreground ml-2">({nfe.products.length} produtos)</span>
                                 </AccordionTrigger>
                                 <AccordionContent>
@@ -179,7 +175,7 @@ export function NfeComparator() {
                                             </TableHeader>
                                             <TableBody>
                                                 {nfe.products.map((prod) => (
-                                                    <TableRow key={prod.code}>
+                                                    <TableRow key={`${nfe.name}-${prod.code}`}>
                                                         <TableCell className="font-mono text-xs">{prod.code}</TableCell>
                                                         <TableCell>{prod.description}</TableCell>
                                                         <TableCell className="text-right">{formatNumber(prod.quantity)}</TableCell>
