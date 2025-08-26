@@ -5,7 +5,7 @@ import { XMLParser } from "fast-xml-parser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Upload, Trash2, GitCompareArrows, Search } from "lucide-react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -32,6 +32,7 @@ interface ComparisonResult {
     code: string;
     description: string;
     totalQuantity: number;
+    totalValue: number;
     nfeCount: number;
     occurrences: Array<{
         nfeId: string;
@@ -201,6 +202,7 @@ export function NfeComparator() {
                     code: first.code,
                     description: first.description,
                     totalQuantity: group.reduce((sum, item) => sum + item.quantity, 0),
+                    totalValue: group.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0),
                     nfeCount: new Set(group.map(item => item.nfeId)).size,
                     occurrences: group.map(item => ({
                         nfeId: item.nfeId,
@@ -256,6 +258,7 @@ export function NfeComparator() {
                     code: p.code,
                     description: p.description,
                     totalQuantity: 0,
+                    totalValue: 0,
                     nfeCount: 0,
                     occurrences: []
                 };
@@ -268,11 +271,12 @@ export function NfeComparator() {
                 unitCost: p.unitCost
             });
             return acc;
-        }, {} as Record<string, ComparisonResult>);
+        }, {} as Record<string, Omit<ComparisonResult, 'totalQuantity' | 'totalValue' | 'nfeCount'>>);
 
-        const results = Object.values(groupedByCode).map(group => ({
+        const results: ComparisonResult[] = Object.values(groupedByCode).map(group => ({
             ...group,
             totalQuantity: group.occurrences.reduce((sum, item) => sum + item.quantity, 0),
+            totalValue: group.occurrences.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0),
             nfeCount: new Set(group.occurrences.map(item => item.nfeId)).size,
         }));
         
@@ -300,7 +304,11 @@ export function NfeComparator() {
         toast({ title: "Dados limpos", description: "A área de comparação está pronta para novos arquivos." });
     }, [toast]);
 
-    const renderResultTable = (results: ComparisonResult[], title: string) => (
+    const renderResultTable = (results: ComparisonResult[], title: string) => {
+        const grandTotalQuantity = results.reduce((sum, item) => sum + item.totalQuantity, 0);
+        const grandTotalValue = results.reduce((sum, item) => sum + item.totalValue, 0);
+
+        return (
          <Card className="mt-4">
             <CardHeader>
                 <CardTitle>{title}</CardTitle>
@@ -313,6 +321,7 @@ export function NfeComparator() {
                                 <TableHead>Produto</TableHead>
                                 <TableHead className="text-center">Encontrado em</TableHead>
                                 <TableHead className="text-right">Qtde Total</TableHead>
+                                <TableHead className="text-right">Valor Total (R$)</TableHead>
                                 <TableHead>Ocorrências nas NF-es</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -327,6 +336,7 @@ export function NfeComparator() {
                                         <Badge variant="secondary">{result.nfeCount} NF-es</Badge>
                                     </TableCell>
                                     <TableCell className="text-right font-bold">{formatNumber(result.totalQuantity)}</TableCell>
+                                    <TableCell className="text-right font-bold">{formatCurrency(result.totalValue)}</TableCell>
                                     <TableCell>
                                         <div className="flex flex-col gap-1">
                                             {result.occurrences.map((occ, index) => (
@@ -344,11 +354,20 @@ export function NfeComparator() {
                                 </TableRow>
                             ))}
                         </TableBody>
+                        <TableFooter>
+                            <TableRow className="font-bold bg-muted">
+                                <TableCell colSpan={2} className="text-right">Totais Gerais:</TableCell>
+                                <TableCell className="text-right">{formatNumber(grandTotalQuantity)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(grandTotalValue)}</TableCell>
+                                <TableCell></TableCell>
+                            </TableRow>
+                        </TableFooter>
                     </Table>
                 </div>
             </CardContent>
         </Card>
-    );
+        );
+    }
 
     return (
         <div className="space-y-4">
@@ -360,7 +379,7 @@ export function NfeComparator() {
                     <div className="flex flex-wrap gap-2 items-center">
                         <Button onClick={() => fileInputRef.current?.click()} disabled={isComparing || isSearching}>
                             <Upload className="mr-2 h-4 w-4" />
-                            Importar XML
+                            Importar Arquivos XML
                         </Button>
                         {loadedNfes.length > 1 && (
                             <Button onClick={handleCompare} variant="third" disabled={isComparing || isSearching}>
