@@ -4,12 +4,14 @@ import { useState, useRef, useCallback, useMemo } from "react";
 import { XMLParser } from "fast-xml-parser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, Trash2, GitCompareArrows } from "lucide-react";
+import { Upload, Trash2, GitCompareArrows, Search } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "../ui/label";
 
 interface Product {
     code: string;
@@ -43,7 +45,10 @@ interface ComparisonResult {
 export function NfeComparator() {
     const [loadedNfes, setLoadedNfes] = useState<LoadedNfe[]>([]);
     const [comparisonResult, setComparisonResult] = useState<ComparisonResult[]>([]);
+    const [searchResult, setSearchResult] = useState<ComparisonResult[]>([]);
     const [isComparing, setIsComparing] = useState(false);
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -153,6 +158,17 @@ export function NfeComparator() {
         }
     };
 
+    const getAllProducts = useCallback(() => {
+       return loadedNfes.flatMap(nfe => 
+            nfe.products.map(p => ({
+                ...p,
+                nfeId: nfe.id,
+                nfeNumber: nfe.nfeNumber,
+                emitterName: nfe.emitterName
+            }))
+        );
+    }, [loadedNfes]);
+
     const handleCompare = useCallback(() => {
         if (loadedNfes.length < 2) {
             toast({
@@ -165,15 +181,9 @@ export function NfeComparator() {
 
         setIsComparing(true);
         setComparisonResult([]);
+        setSearchResult([]); // Limpa a busca ao comparar
 
-        const allProducts = loadedNfes.flatMap(nfe => 
-            nfe.products.map(p => ({
-                ...p,
-                nfeId: nfe.id,
-                nfeNumber: nfe.nfeNumber,
-                emitterName: nfe.emitterName
-            }))
-        );
+        const allProducts = getAllProducts();
 
         const groupedByCode = allProducts.reduce((acc, p) => {
             if (!acc[p.code]) {
@@ -213,50 +223,192 @@ export function NfeComparator() {
 
         setIsComparing(false);
 
-    }, [loadedNfes, toast]);
+    }, [loadedNfes, toast, getAllProducts]);
+
+
+     const handleSearch = useCallback(() => {
+        if (loadedNfes.length === 0) {
+            toast({ variant: "destructive", title: "Nenhuma NF-e carregada" });
+            return;
+        }
+        if (!searchQuery.trim()) {
+            toast({ variant: "destructive", title: "Termo de busca vazio" });
+            return;
+        }
+
+        setIsSearching(true);
+        setSearchResult([]);
+        setComparisonResult([]); // Limpa a comparação ao buscar
+
+        const allProducts = getAllProducts();
+        const searchTerms = searchQuery.split(',').map(term => term.trim().toLowerCase()).filter(Boolean);
+
+        const foundProducts = allProducts.filter(p => {
+            const productCode = p.code.toLowerCase();
+            const productDesc = p.description.toLowerCase();
+            return searchTerms.some(term => productCode.includes(term) || productDesc.includes(term));
+        });
+
+        const groupedByCode = foundProducts.reduce((acc, p) => {
+            const key = `${p.code}-${p.description}`;
+            if (!acc[key]) {
+                acc[key] = {
+                    code: p.code,
+                    description: p.description,
+                    totalQuantity: 0,
+                    nfeCount: 0,
+                    occurrences: []
+                };
+            }
+            acc[key].occurrences.push({
+                nfeId: p.nfeId,
+                nfeNumber: p.nfeNumber,
+                emitterName: p.emitterName,
+                quantity: p.quantity,
+                unitCost: p.unitCost
+            });
+            return acc;
+        }, {} as Record<string, ComparisonResult>);
+
+        const results = Object.values(groupedByCode).map(group => ({
+            ...group,
+            totalQuantity: group.occurrences.reduce((sum, item) => sum + item.quantity, 0),
+            nfeCount: new Set(group.occurrences.map(item => item.nfeId)).size,
+        }));
+        
+        results.sort((a, b) => a.description.localeCompare(b.description));
+
+        setSearchResult(results);
+
+        toast({
+            title: "Busca Concluída",
+            description: `${results.length} resultado(s) encontrado(s).`
+        });
+
+        setIsSearching(false);
+    }, [loadedNfes, searchQuery, toast, getAllProducts]);
 
 
     const clearData = useCallback(() => {
         setLoadedNfes([]);
         setComparisonResult([]);
+        setSearchResult([]);
+        setSearchQuery("");
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
         toast({ title: "Dados limpos", description: "A área de comparação está pronta para novos arquivos." });
     }, [toast]);
 
+    const renderResultTable = (results: ComparisonResult[], title: string) => (
+         <Card className="mt-4">
+            <CardHeader>
+                <CardTitle>{title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="w-full overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Produto</TableHead>
+                                <TableHead className="text-center">Encontrado em</TableHead>
+                                <TableHead className="text-right">Qtde Total</TableHead>
+                                <TableHead>Ocorrências nas NF-es</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {results.map((result) => (
+                                <TableRow key={`${result.code}-${result.description}`}>
+                                    <TableCell>
+                                        <div className="font-medium">{result.description}</div>
+                                        <div className="text-xs text-muted-foreground font-mono">{result.code}</div>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                        <Badge variant="secondary">{result.nfeCount} NF-es</Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right font-bold">{formatNumber(result.totalQuantity)}</TableCell>
+                                    <TableCell>
+                                        <div className="flex flex-col gap-1">
+                                            {result.occurrences.map((occ, index) => (
+                                                <div key={index} className="text-xs p-2 rounded-md bg-muted/50" title={`${occ.emitterName} - NF-e: ${occ.nfeNumber}`}>
+                                                   <p className="font-semibold">{occ.emitterName}</p>
+                                                   <div className="flex justify-between mt-1">
+                                                        <span>NF-e: {occ.nfeNumber}</span>
+                                                        <span>Qtde: {formatNumber(occ.quantity)}</span>
+                                                        <span>Custo: {formatCurrency(occ.unitCost, 4)}</span>
+                                                   </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            </CardContent>
+        </Card>
+    );
+
     return (
         <div className="space-y-4">
-            <div className="flex flex-wrap gap-2 items-center">
-                <Button onClick={() => fileInputRef.current?.click()} disabled={isComparing}>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Importar Arquivos XML
-                </Button>
-                {loadedNfes.length > 1 && (
-                     <Button onClick={handleCompare} variant="third" disabled={isComparing}>
-                        <GitCompareArrows className="mr-2 h-4 w-4" />
-                        {isComparing ? 'Comparando...' : 'Comparar Produtos'}
-                    </Button>
-                )}
-                {loadedNfes.length > 0 && (
-                    <Button onClick={clearData} variant="destructive" disabled={isComparing}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Limpar Dados
-                    </Button>
-                )}
-                 <Input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    onChange={handleFileChange}
-                    className="hidden" 
-                    accept=".xml"
-                    multiple
-                    disabled={isComparing}
-                />
-            </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Controles</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex flex-wrap gap-2 items-center">
+                        <Button onClick={() => fileInputRef.current?.click()} disabled={isComparing || isSearching}>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Importar XML
+                        </Button>
+                        {loadedNfes.length > 1 && (
+                            <Button onClick={handleCompare} variant="third" disabled={isComparing || isSearching}>
+                                <GitCompareArrows className="mr-2 h-4 w-4" />
+                                {isComparing ? 'Comparando...' : 'Comparar Duplicados'}
+                            </Button>
+                        )}
+                        {loadedNfes.length > 0 && (
+                            <Button onClick={clearData} variant="destructive" disabled={isComparing || isSearching}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Limpar Dados
+                            </Button>
+                        )}
+                        <Input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            onChange={handleFileChange}
+                            className="hidden" 
+                            accept=".xml"
+                            multiple
+                            disabled={isComparing || isSearching}
+                        />
+                    </div>
+                     {loadedNfes.length > 0 && (
+                        <div className="pt-4 border-t">
+                            <Label htmlFor="search-input">Buscar produto por código ou descrição (use vírgula para múltiplos termos)</Label>
+                            <div className="flex gap-2 mt-2">
+                                <Input 
+                                    id="search-input"
+                                    placeholder="Ex: 12345, correia"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                    disabled={isSearching}
+                                />
+                                <Button onClick={handleSearch} disabled={isSearching}>
+                                    <Search className="mr-2 h-4 w-4" />
+                                    {isSearching ? "Buscando..." : "Buscar"}
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
 
             {loadedNfes.length > 0 && (
-                <div className="space-y-2 p-4 border rounded-lg bg-muted/50">
+                <div className="space-y-2 pt-4">
                     <h3 className="text-lg font-medium">NF-es Carregadas ({loadedNfes.length}):</h3>
                      <Accordion type="multiple" className="w-full">
                         {loadedNfes.map((nfe) => (
@@ -297,49 +449,9 @@ export function NfeComparator() {
                 </div>
             )}
 
-            {comparisonResult.length > 0 && (
-                <div className="w-full overflow-x-auto">
-                    <h3 className="text-lg font-medium mb-2">Resultados da Comparação</h3>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Produto</TableHead>
-                                <TableHead className="text-center">Encontrado em</TableHead>
-                                <TableHead className="text-right">Qtde Total</TableHead>
-                                <TableHead>Ocorrências nas NF-es</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {comparisonResult.map((result) => (
-                                <TableRow key={result.code}>
-                                    <TableCell>
-                                        <div className="font-medium">{result.description}</div>
-                                        <div className="text-xs text-muted-foreground font-mono">{result.code}</div>
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        <Badge variant="secondary">{result.nfeCount} NF-es</Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right font-bold">{formatNumber(result.totalQuantity)}</TableCell>
-                                    <TableCell>
-                                        <div className="flex flex-col gap-1">
-                                            {result.occurrences.map((occ, index) => (
-                                                <div key={index} className="text-xs p-2 rounded-md bg-muted/50" title={`${occ.emitterName} - NF-e: ${occ.nfeNumber}`}>
-                                                   <p className="font-semibold">{occ.emitterName}</p>
-                                                   <div className="flex justify-between mt-1">
-                                                        <span>NF-e: {occ.nfeNumber}</span>
-                                                        <span>Qtde: {formatNumber(occ.quantity)}</span>
-                                                        <span>Custo: {formatCurrency(occ.unitCost, 4)}</span>
-                                                   </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            )}
+            {comparisonResult.length > 0 && renderResultTable(comparisonResult, "Resultados da Comparação de Duplicados")}
+            {searchResult.length > 0 && renderResultTable(searchResult, "Resultados da Busca")}
+
         </div>
     );
 }
