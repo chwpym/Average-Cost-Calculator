@@ -215,7 +215,7 @@ export function AdvancedCostAnalysisCalculator() {
             doc.text(`CNPJ: ${nfeInfo.emitterCnpj}`, 14, 44);
         }
 
-        const head = [['Descrição', 'Qtde', 'Fator Conv.', 'C. Un. Orig.', 'IPI', 'ICMS-ST', 'PIS', 'COFINS', 'C. Un. Final', 'C. Un. Final (Conv.)', 'C. Total Final']];
+        const head = [['Descrição', 'Qtde', 'Fator Conv.', 'C. Un. Orig.', 'IPI', 'ICMS-ST', 'Frete', 'Seguro', 'Desconto', 'Outras', 'PIS', 'COFINS', 'C. Un. Final', 'C. Un. Final (Conv.)', 'C. Total Final']];
         const body = items.map(item => [
             item.description,
             formatNumber(item.quantity, 0),
@@ -223,6 +223,10 @@ export function AdvancedCostAnalysisCalculator() {
             formatCurrency(item.unitCost, 4),
             formatCurrency(item.ipi),
             formatCurrency(item.icmsST),
+            formatCurrency(item.frete),
+            formatCurrency(item.seguro),
+            formatCurrency(item.desconto),
+            formatCurrency(item.outras),
             formatCurrency(item.pis),
             formatCurrency(item.cofins),
             formatCurrency(item.finalUnitCost, 4),
@@ -235,6 +239,10 @@ export function AdvancedCostAnalysisCalculator() {
                 { content: '' }, // C. Un. Orig.
                 { content: formatCurrency(totals.totalIPI), styles: { fontStyle: 'bold' } },
                 { content: formatCurrency(totals.totalST), styles: { fontStyle: 'bold' } },
+                { content: formatCurrency(totals.totalFrete), styles: { fontStyle: 'bold' } },
+                { content: formatCurrency(totals.totalSeguro), styles: { fontStyle: 'bold' } },
+                { content: formatCurrency(totals.totalDesconto), styles: { fontStyle: 'bold' } },
+                { content: formatCurrency(totals.totalOutras), styles: { fontStyle: 'bold' } },
                 { content: formatCurrency(totals.totalPIS), styles: { fontStyle: 'bold' } },
                 { content: formatCurrency(totals.totalCOFINS), styles: { fontStyle: 'bold' } },
                 { content: '' }, // C. Un. Final
@@ -329,6 +337,10 @@ export function AdvancedCostAnalysisCalculator() {
                                 <TableHead className="text-right">C. Total Orig.</TableHead>
                                 <TableHead className="text-right">IPI</TableHead>
                                 <TableHead className="text-right">ICMS-ST</TableHead>
+                                <TableHead className="text-right">Frete</TableHead>
+                                <TableHead className="text-right">Seguro</TableHead>
+                                <TableHead className="text-right">Desconto</TableHead>
+                                <TableHead className="text-right">Outras</TableHead>
                                 <TableHead className="text-right text-red-500">PIS</TableHead>
                                 <TableHead className="text-right text-red-500">COFINS</TableHead>
                                 <TableHead className="text-right text-primary font-bold">C. Un. Final</TableHead>
@@ -355,6 +367,10 @@ export function AdvancedCostAnalysisCalculator() {
                                     <TableCell className="text-right">{formatCurrency(item.totalCost)}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.ipi)}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.icmsST)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(item.frete)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(item.seguro)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(item.desconto)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(item.outras)}</TableCell>
                                     <TableCell className="text-right text-red-500">{formatCurrency(item.pis)}</TableCell>
                                     <TableCell className="text-right text-red-500">{formatCurrency(item.cofins)}</TableCell>
                                     <TableCell className="text-right font-bold">{formatCurrency(item.finalUnitCost, 4)}</TableCell>
@@ -369,6 +385,10 @@ export function AdvancedCostAnalysisCalculator() {
                                 <TableCell className="text-right">{formatCurrency(totals.totalCost)}</TableCell>
                                 <TableCell className="text-right">{formatCurrency(totals.totalIPI)}</TableCell>
                                 <TableCell className="text-right">{formatCurrency(totals.totalST)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(totals.totalFrete)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(totals.totalSeguro)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(totals.totalDesconto)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(totals.totalOutras)}</TableCell>
                                 <TableCell className="text-right text-red-500">{formatCurrency(totals.totalPIS)}</TableCell>
                                 <TableCell className="text-right text-red-500">{formatCurrency(totals.totalCOFINS)}</TableCell>
                                 <TableCell colSpan={2}></TableCell>
