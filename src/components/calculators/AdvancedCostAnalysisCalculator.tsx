@@ -202,6 +202,11 @@ export function AdvancedCostAnalysisCalculator() {
         });
     }, [items]);
 
+    const totalCostWithoutPisCofinsCredit = useMemo(() => {
+        return totals.finalTotalCost + totals.totalPIS + totals.totalCOFINS;
+    }, [totals]);
+
+
     const generatePdf = () => {
         const doc = new jsPDF({ orientation: "landscape" });
         
@@ -318,8 +323,9 @@ export function AdvancedCostAnalysisCalculator() {
                         <div><strong>Emitente:</strong> {nfeInfo.emitterName}</div>
                         <div><strong>CNPJ:</strong> {nfeInfo.emitterCnpj}</div>
                         <div><strong>NF-e Nº:</strong> {nfeInfo.nfeNumber}</div>
-                        <div className="md:col-span-1 lg:col-span-2"><strong>Total Bruto (s/ desc):</strong> <span className="font-bold">{formatCurrency(nfeInfo.totalGrossValue)}</span></div>
-                        <div><strong>Total Líquido:</strong> <span className="font-bold text-primary">{formatCurrency(totals.finalTotalCost)}</span></div>
+                        <div className="font-semibold"><strong>Total Bruto (s/ desc):</strong> <span className="font-bold">{formatCurrency(nfeInfo.totalGrossValue)}</span></div>
+                        <div className="font-semibold"><strong>Custo Total (sem crédito PIS/COFINS):</strong> <span className="font-bold">{formatCurrency(totalCostWithoutPisCofinsCredit)}</span></div>
+                        <div className="font-semibold"><strong>Custo Líquido (com crédito PIS/COFINS):</strong> <span className="font-bold text-primary">{formatCurrency(totals.finalTotalCost)}</span></div>
                     </div>
                 </div>
                 </>
