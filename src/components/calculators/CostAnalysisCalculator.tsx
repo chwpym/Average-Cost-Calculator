@@ -25,6 +25,8 @@ interface AnalyzedItem {
     outras: number;
     finalUnitCost: number;
     finalTotalCost: number;
+    conversionFactor: string;
+    convertedUnitCost: number;
 }
 
 interface NfeInfo {
@@ -91,7 +93,6 @@ export function CostAnalysisCalculator() {
                     
                     const itemWeight = totalProdValue > 0 ? itemTotalCost / totalProdValue : 0;
                     
-                    // Prioritize value from the item itself, otherwise consider it zero. Avoids incorrect prorating.
                     const ipiValor = parseFloat(imposto?.IPI?.IPITrib?.vIPI) || 0;
                     const stValor = parseFloat(imposto?.ICMS?.ICMSST?.vICMSST) || (totalST * itemWeight) || 0;
                     
@@ -117,6 +118,8 @@ export function CostAnalysisCalculator() {
                         outras: outrasRateado,
                         finalUnitCost: finalUnitCost,
                         finalTotalCost: finalTotalCost,
+                        conversionFactor: "1",
+                        convertedUnitCost: finalUnitCost,
                     };
                 });
                 
@@ -144,6 +147,19 @@ export function CostAnalysisCalculator() {
             }
         };
         reader.readAsText(file, 'ISO-8859-1');
+    };
+
+    const handleConversionFactorChange = (id: number, value: string) => {
+        setItems(prevItems =>
+            prevItems.map(item => {
+                if (item.id === id) {
+                    const factor = parseFloat(value) || 1;
+                    const convertedUnitCost = factor > 0 ? item.finalUnitCost / factor : item.finalUnitCost;
+                    return { ...item, conversionFactor: value, convertedUnitCost };
+                }
+                return item;
+            })
+        );
     };
 
     const clearData = () => {
@@ -182,34 +198,30 @@ export function CostAnalysisCalculator() {
             doc.text(`CNPJ: ${nfeInfo.emitterCnpj}`, 14, 44);
         }
 
+        const head = [['Descrição', 'Qtde', 'Fator Conv.', 'C. Un. Orig.', 'IPI', 'ICMS-ST', 'C. Un. Final', 'C. Un. Final (Conv.)', 'C. Total Final']];
+        const body = items.map(item => [
+            item.description,
+            formatNumber(item.quantity, 0),
+            formatNumber(parseFloat(item.conversionFactor) || 1, 0),
+            formatCurrency(item.unitCost, 4),
+            formatCurrency(item.ipi),
+            formatCurrency(item.icmsST),
+            formatCurrency(item.finalUnitCost, 4),
+            formatCurrency(item.convertedUnitCost, 4),
+            formatCurrency(item.finalTotalCost),
+        ]);
+        
         autoTable(doc, {
             startY: nfeInfo ? 50 : 30,
-            head: [['Descrição', 'Qtde', 'Custo Un. Orig.', 'Custo Total Orig.', 'IPI', 'ICMS-ST', 'Frete', 'Seguro', 'Desconto', 'Outras', 'Custo Un. Final', 'Custo Total Final']],
-            body: items.map(item => [
-                item.description,
-                formatNumber(item.quantity, 0),
-                formatCurrency(item.unitCost, 4),
-                formatCurrency(item.totalCost),
-                formatCurrency(item.ipi),
-                formatCurrency(item.icmsST),
-                formatCurrency(item.frete),
-                formatCurrency(item.seguro),
-                formatCurrency(item.desconto),
-                formatCurrency(item.outras),
-                formatCurrency(item.finalUnitCost, 4),
-                formatCurrency(item.finalTotalCost),
-            ]),
+            head: head,
+            body: body,
             foot: [
-                [
-                    { content: 'Totais:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } },
-                    { content: formatCurrency(totals.totalCost), styles: { fontStyle: 'bold' } },
+                 [
+                    { content: 'Totais:', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } },
                     { content: formatCurrency(totals.totalIPI), styles: { fontStyle: 'bold' } },
                     { content: formatCurrency(totals.totalST), styles: { fontStyle: 'bold' } },
-                    { content: formatCurrency(totals.totalFrete), styles: { fontStyle: 'bold' } },
-                    { content: formatCurrency(totals.totalSeguro), styles: { fontStyle: 'bold' } },
-                    { content: formatCurrency(totals.totalDesconto), styles: { fontStyle: 'bold' } },
-                    { content: formatCurrency(totals.totalOutras), styles: { fontStyle: 'bold' } },
-                    { content: '' },
+                    { content: '' }, 
+                    { content: '' }, 
                     { content: formatCurrency(totals.finalTotalCost), styles: { fontStyle: 'bold', fillColor: [232, 245, 233] } },
                 ]
             ],
@@ -217,7 +229,6 @@ export function CostAnalysisCalculator() {
             headStyles: { fillColor: [63, 81, 181] },
             footStyles: { fillColor: [224, 224, 224], textColor: [0,0,0], fontStyle: 'bold' },
             didDrawPage: (data) => {
-                // Footer
                 const pageCount = doc.internal.getNumberOfPages();
                 doc.setFontSize(8);
                 const pageText = `Página ${data.pageNumber} de ${pageCount}`;
@@ -280,6 +291,7 @@ export function CostAnalysisCalculator() {
                             <TableRow>
                                 <TableHead className="min-w-[250px] sticky left-0 bg-background z-10">Descrição</TableHead>
                                 <TableHead className="text-right">Qtde</TableHead>
+                                <TableHead className="w-[100px]">Fator Conv.</TableHead>
                                 <TableHead className="text-right">Custo Un. Orig.</TableHead>
                                 <TableHead className="text-right">Custo Total Orig.</TableHead>
                                 <TableHead className="text-right">IPI</TableHead>
@@ -289,6 +301,7 @@ export function CostAnalysisCalculator() {
                                 <TableHead className="text-right">Desconto</TableHead>
                                 <TableHead className="text-right">Outras</TableHead>
                                 <TableHead className="text-right text-primary font-bold">Custo Un. Final</TableHead>
+                                <TableHead className="text-right text-third font-bold">C. Un. Final (Conv.)</TableHead>
                                 <TableHead className="text-right text-primary font-bold">Custo Total Final</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -297,6 +310,16 @@ export function CostAnalysisCalculator() {
                                 <TableRow key={item.id}>
                                     <TableCell className="font-medium text-xs sticky left-0 bg-background z-10">{item.description}</TableCell>
                                     <TableCell className="text-right">{formatNumber(item.quantity, 0)}</TableCell>
+                                     <TableCell>
+                                        <Input
+                                            type="number"
+                                            className="h-8 text-right"
+                                            value={item.conversionFactor}
+                                            onChange={(e) => handleConversionFactorChange(item.id, e.target.value)}
+                                            placeholder="1"
+                                            min="1"
+                                        />
+                                    </TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.unitCost, 4)}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.totalCost)}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.ipi)}</TableCell>
@@ -306,13 +329,14 @@ export function CostAnalysisCalculator() {
                                     <TableCell className="text-right">{formatCurrency(item.desconto)}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.outras)}</TableCell>
                                     <TableCell className="text-right font-bold">{formatCurrency(item.finalUnitCost, 4)}</TableCell>
+                                    <TableCell className="text-right font-bold text-third">{formatCurrency(item.convertedUnitCost, 4)}</TableCell>
                                     <TableCell className="text-right font-bold">{formatCurrency(item.finalTotalCost)}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
                         <TableFooter>
                             <TableRow className="font-bold bg-muted/50">
-                                <TableCell className="sticky left-0 bg-muted/50 z-10 text-right" colSpan={3}>Totais:</TableCell>
+                                <TableCell className="sticky left-0 bg-muted/50 z-10 text-right" colSpan={4}>Totais:</TableCell>
                                 <TableCell className="text-right">{formatCurrency(totals.totalCost)}</TableCell>
                                 <TableCell className="text-right">{formatCurrency(totals.totalIPI)}</TableCell>
                                 <TableCell className="text-right">{formatCurrency(totals.totalST)}</TableCell>
@@ -320,7 +344,7 @@ export function CostAnalysisCalculator() {
                                 <TableCell className="text-right">{formatCurrency(totals.totalSeguro)}</TableCell>
                                 <TableCell className="text-right">{formatCurrency(totals.totalDesconto)}</TableCell>
                                 <TableCell className="text-right">{formatCurrency(totals.totalOutras)}</TableCell>
-                                <TableCell></TableCell>
+                                <TableCell colSpan={2}></TableCell>
                                 <TableCell className="text-right text-primary">{formatCurrency(totals.finalTotalCost)}</TableCell>
                             </TableRow>
                         </TableFooter>
@@ -329,5 +353,4 @@ export function CostAnalysisCalculator() {
             )}
         </div>
     );
-
-    
+}
