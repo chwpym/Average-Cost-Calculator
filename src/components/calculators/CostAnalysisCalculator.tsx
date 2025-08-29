@@ -90,9 +90,12 @@ export function CostAnalysisCalculator() {
                     const itemTotalCost = parseFloat(prod.vProd) || 0;
                     
                     const itemWeight = totalProdValue > 0 ? itemTotalCost / totalProdValue : 0;
-
-                    const ipiValor = imposto?.IPI?.IPITrib?.vIPI || (totalIPI * itemWeight) || 0;
-                    const stValor = imposto?.ICMS?.ICMSST?.vICMSST || (totalST * itemWeight) || 0;
+                    
+                    // Prioritize IPI value from the item itself, otherwise use the prorated total
+                    const ipiValor = parseFloat(imposto?.IPI?.IPITrib?.vIPI) || (totalIPI * itemWeight) || 0;
+                    
+                    // Prioritize ICMS ST value from the item itself, otherwise use the prorated total
+                    const stValor = parseFloat(imposto?.ICMS?.ICMSST?.vICMSST) || (totalST * itemWeight) || 0;
                     
                     const freteRateado = parseFloat(prod.vFrete) || (totalFrete * itemWeight) || 0;
                     const seguroRateado = parseFloat(prod.vSeg) || (totalSeguro * itemWeight) || 0;
