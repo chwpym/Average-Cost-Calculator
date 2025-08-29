@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info } from "lucide-react";
+import { Label } from "../ui/label";
 
 interface AnalyzedItem {
     id: number;
@@ -29,6 +30,8 @@ interface AnalyzedItem {
     cofins: number;
     finalUnitCost: number;
     finalTotalCost: number;
+    conversionFactor: string; // Fator de conversão (ex: "12" para caixa com 12)
+    convertedUnitCost: number; // Custo unitário após conversão
 }
 
 interface NfeInfo {
@@ -124,6 +127,8 @@ export function AdvancedCostAnalysisCalculator() {
                         cofins: cofinsValor,
                         finalUnitCost: finalUnitCost,
                         finalTotalCost: finalTotalCost,
+                        conversionFactor: "1",
+                        convertedUnitCost: finalUnitCost,
                     };
                 });
                 
@@ -152,6 +157,20 @@ export function AdvancedCostAnalysisCalculator() {
         };
         reader.readAsText(file, 'ISO-8859-1');
     };
+
+    const handleConversionFactorChange = (id: number, value: string) => {
+        setItems(prevItems =>
+            prevItems.map(item => {
+                if (item.id === id) {
+                    const factor = parseFloat(value) || 1;
+                    const convertedUnitCost = factor > 0 ? item.finalUnitCost / factor : item.finalUnitCost;
+                    return { ...item, conversionFactor: value, convertedUnitCost };
+                }
+                return item;
+            })
+        );
+    };
+
 
     const clearData = () => {
         setItems([]);
@@ -194,32 +213,30 @@ export function AdvancedCostAnalysisCalculator() {
             doc.text(`CNPJ: ${nfeInfo.emitterCnpj}`, 14, 44);
         }
 
-        const head = [['Descrição', 'Qtde', 'C. Un. Orig.', 'C. Total Orig.', 'IPI', 'ICMS-ST', 'Frete', 'Outras', 'PIS', 'COFINS', 'C. Un. Final', 'C. Total Final']];
+        const head = [['Descrição', 'Qtde', 'Fator Conv.', 'C. Un. Orig.', 'IPI', 'ICMS-ST', 'PIS', 'COFINS', 'C. Un. Final', 'C. Un. Final (Conv.)', 'C. Total Final']];
         const body = items.map(item => [
             item.description,
             formatNumber(item.quantity, 0),
+            formatNumber(parseFloat(item.conversionFactor) || 1, 0),
             formatCurrency(item.unitCost, 4),
-            formatCurrency(item.totalCost),
             formatCurrency(item.ipi),
             formatCurrency(item.icmsST),
-            formatCurrency(item.frete),
-            formatCurrency(item.outras - item.desconto + item.seguro), // Consolidando
             formatCurrency(item.pis),
             formatCurrency(item.cofins),
             formatCurrency(item.finalUnitCost, 4),
+            formatCurrency(item.convertedUnitCost, 4),
             formatCurrency(item.finalTotalCost),
         ]);
         const foot = [
             [
                 { content: 'Totais:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } },
-                { content: formatCurrency(totals.totalCost), styles: { fontStyle: 'bold' } },
+                { content: '' }, // C. Un. Orig.
                 { content: formatCurrency(totals.totalIPI), styles: { fontStyle: 'bold' } },
                 { content: formatCurrency(totals.totalST), styles: { fontStyle: 'bold' } },
-                { content: formatCurrency(totals.totalFrete), styles: { fontStyle: 'bold' } },
-                { content: formatCurrency(totals.totalOutras - totals.totalDesconto + totals.totalSeguro), styles: { fontStyle: 'bold' } },
                 { content: formatCurrency(totals.totalPIS), styles: { fontStyle: 'bold' } },
                 { content: formatCurrency(totals.totalCOFINS), styles: { fontStyle: 'bold' } },
-                { content: '' },
+                { content: '' }, // C. Un. Final
+                { content: '' }, // C. Un. Final (Conv.)
                 { content: formatCurrency(totals.finalTotalCost), styles: { fontStyle: 'bold', fillColor: [232, 245, 233] } },
             ]
         ];
@@ -303,13 +320,14 @@ export function AdvancedCostAnalysisCalculator() {
                             <TableRow>
                                 <TableHead className="min-w-[250px] sticky left-0 bg-background z-10">Descrição</TableHead>
                                 <TableHead className="text-right">Qtde</TableHead>
+                                <TableHead className="w-[100px]">Fator Conv.</TableHead>
                                 <TableHead className="text-right">C. Un. Orig.</TableHead>
-                                <TableHead className="text-right">C. Total Orig.</TableHead>
                                 <TableHead className="text-right">IPI</TableHead>
                                 <TableHead className="text-right">ICMS-ST</TableHead>
                                 <TableHead className="text-right text-red-500">PIS</TableHead>
                                 <TableHead className="text-right text-red-500">COFINS</TableHead>
                                 <TableHead className="text-right text-primary font-bold">C. Un. Final</TableHead>
+                                <TableHead className="text-right text-primary font-bold">C. Un. Final (Conv.)</TableHead>
                                 <TableHead className="text-right text-primary font-bold">C. Total Final</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -318,26 +336,35 @@ export function AdvancedCostAnalysisCalculator() {
                                 <TableRow key={item.id}>
                                     <TableCell className="font-medium text-xs sticky left-0 bg-background z-10">{item.description}</TableCell>
                                     <TableCell className="text-right">{formatNumber(item.quantity, 0)}</TableCell>
+                                    <TableCell>
+                                        <Input
+                                            type="number"
+                                            className="h-8 text-right"
+                                            value={item.conversionFactor}
+                                            onChange={(e) => handleConversionFactorChange(item.id, e.target.value)}
+                                            placeholder="1"
+                                            min="1"
+                                        />
+                                    </TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.unitCost, 4)}</TableCell>
-                                    <TableCell className="text-right">{formatCurrency(item.totalCost)}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.ipi)}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.icmsST)}</TableCell>
                                     <TableCell className="text-right text-red-500">{formatCurrency(item.pis)}</TableCell>
                                     <TableCell className="text-right text-red-500">{formatCurrency(item.cofins)}</TableCell>
                                     <TableCell className="text-right font-bold">{formatCurrency(item.finalUnitCost, 4)}</TableCell>
+                                    <TableCell className="text-right font-bold text-third">{formatCurrency(item.convertedUnitCost, 4)}</TableCell>
                                     <TableCell className="text-right font-bold">{formatCurrency(item.finalTotalCost)}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
                         <TableFooter>
                             <TableRow className="font-bold bg-muted/50">
-                                <TableCell className="sticky left-0 bg-muted/50 z-10 text-right" colSpan={3}>Totais:</TableCell>
-                                <TableCell className="text-right">{formatCurrency(totals.totalCost)}</TableCell>
+                                <TableCell className="sticky left-0 bg-muted/50 z-10 text-right" colSpan={4}>Totais:</TableCell>
                                 <TableCell className="text-right">{formatCurrency(totals.totalIPI)}</TableCell>
                                 <TableCell className="text-right">{formatCurrency(totals.totalST)}</TableCell>
                                 <TableCell className="text-right text-red-500">{formatCurrency(totals.totalPIS)}</TableCell>
                                 <TableCell className="text-right text-red-500">{formatCurrency(totals.totalCOFINS)}</TableCell>
-                                <TableCell></TableCell>
+                                <TableCell colSpan={2}></TableCell>
                                 <TableCell className="text-right text-primary">{formatCurrency(totals.finalTotalCost)}</TableCell>
                             </TableRow>
                         </TableFooter>
