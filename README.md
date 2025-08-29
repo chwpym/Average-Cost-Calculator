@@ -17,11 +17,15 @@ O dashboard principal oferece acesso às seguintes calculadoras:
 -   **Calcular Porcentagem:** Realize cálculos de porcentagem simples.
 -   **Somar com Porcentagem:** Adicione um valor percentual a um número inicial.
 -   **Análise de Custo por NF-e:** Importe um arquivo XML de Nota Fiscal Eletrônica (NF-e) para analisar o custo real de cada produto, rateando valores como IPI, ICMS-ST e Frete.
+-   **Análise de Custo Avançada:** Uma versão mais detalhada da análise de NF-e, que calcula o custo líquido considerando créditos de **PIS/COFINS**, ideal para empresas do regime Lucro Real.
+-   **Comparador de NF-e:** Importe múltiplos arquivos XML de NF-e para comparar produtos, quantidades e custos entre eles, identificando duplicatas ou buscando itens específicos por código ou descrição.
 
 ### Recursos Adicionais
 
--   **Importação de XML (NF-e):** As calculadoras de "Precificação em Lote" e "Análise de Custo" permitem importar um XML de NF-e para preencher automaticamente os dados dos produtos, agilizando o processo.
--   **Geração de PDF:** Salve ou imprima os resultados das calculadoras de "Precificação em Lote" и "Análise de Custo" em formato PDF.
+-   **Importação de XML (NF-e):** As calculadoras de "Precificação em Lote", "Análise de Custo" e "Análise de Custo Avançada" permitem importar um XML de NF-e para preencher automaticamente os dados dos produtos, agilizando o processo.
+-   **Busca em Múltiplas NF-es:** O "Comparador de NF-e" permite buscar produtos por código ou descrição em todos os arquivos carregados simultaneamente.
+-   **Cálculo de Custo Unitário Convertido:** As calculadoras de análise de custo possuem um campo de "Fator de Conversão" para calcular o custo de um item individual quando ele é comprado em caixas ou pacotes.
+-   **Geração de PDF:** Salve ou imprima os resultados das calculadoras de "Precificação em Lote" e "Análise de Custo" em formato PDF.
 -   **Tema Claro e Escuro:** A interface oferece suporte para ambos os temas, adaptando-se à sua preferência.
 -   **Design Responsivo:** A aplicação é totalmente funcional em dispositivos móveis, tablets e desktops.
 
