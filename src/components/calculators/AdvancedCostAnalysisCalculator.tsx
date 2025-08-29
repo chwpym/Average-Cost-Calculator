@@ -215,9 +215,13 @@ export function AdvancedCostAnalysisCalculator() {
 
         if (nfeInfo) {
             doc.setFontSize(10);
-            doc.text(`NF-e: ${nfeInfo.nfeNumber}`, 14, 32);
-            doc.text(`Emitente: ${nfeInfo.emitterName}`, 14, 38);
-            doc.text(`CNPJ: ${nfeInfo.emitterCnpj}`, 14, 44);
+            const startY = 32;
+            doc.text(`NF-e: ${nfeInfo.nfeNumber}`, 14, startY);
+            doc.text(`Emitente: ${nfeInfo.emitterName}`, 14, startY + 6);
+            doc.text(`CNPJ: ${nfeInfo.emitterCnpj}`, 14, startY + 12);
+            doc.text(`Total Bruto NF-e: ${formatCurrency(nfeInfo.totalGrossValue)}`, doc.internal.pageSize.getWidth() - 14, startY, { align: "right" });
+            doc.text(`Custo s/ Crédito PIS/COFINS: ${formatCurrency(totalCostWithoutPisCofinsCredit)}`, doc.internal.pageSize.getWidth() - 14, startY + 6, { align: "right" });
+            doc.text(`Custo Líquido Final: ${formatCurrency(totals.finalTotalCost)}`, doc.internal.pageSize.getWidth() - 14, startY + 12, { align: "right" });
         }
 
         const head = [['Descrição', 'Qtde', 'Fator Conv.', 'C. Un. Orig.', 'IPI', 'ICMS-ST', 'Frete', 'Seguro', 'Desconto', 'Outras', 'PIS', 'COFINS', 'C. Un. Final', 'C. Un. Final (Conv.)', 'C. Total Final']];
@@ -238,6 +242,7 @@ export function AdvancedCostAnalysisCalculator() {
             formatCurrency(item.convertedUnitCost, 4),
             formatCurrency(item.finalTotalCost),
         ]);
+        
         const foot = [
             [
                 { content: 'Totais:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } },
@@ -257,7 +262,7 @@ export function AdvancedCostAnalysisCalculator() {
         ];
 
         autoTable(doc, {
-            startY: nfeInfo ? 50 : 30,
+            startY: nfeInfo ? 54 : 30,
             head: head,
             body: body,
             foot: foot,
@@ -324,8 +329,8 @@ export function AdvancedCostAnalysisCalculator() {
                         <div><strong>CNPJ:</strong> {nfeInfo.emitterCnpj}</div>
                         <div><strong>NF-e Nº:</strong> {nfeInfo.nfeNumber}</div>
                         <div className="font-semibold"><strong>Total Bruto (s/ desc):</strong> <span className="font-bold">{formatCurrency(nfeInfo.totalGrossValue)}</span></div>
-                        <div className="font-semibold"><strong>Custo Total (sem crédito PIS/COFINS):</strong> <span className="font-bold">{formatCurrency(totalCostWithoutPisCofinsCredit)}</span></div>
-                        <div className="font-semibold"><strong>Custo Líquido (com crédito PIS/COFINS):</strong> <span className="font-bold text-primary">{formatCurrency(totals.finalTotalCost)}</span></div>
+                        <div className="font-semibold"><strong>Custo Total (s/ crédito PIS/COFINS):</strong> <span className="font-bold">{formatCurrency(totalCostWithoutPisCofinsCredit)}</span></div>
+                        <div className="font-semibold"><strong>Custo Líquido (c/ crédito PIS/COFINS):</strong> <span className="font-bold text-primary">{formatCurrency(totals.finalTotalCost)}</span></div>
                     </div>
                 </div>
                 </>
@@ -397,8 +402,12 @@ export function AdvancedCostAnalysisCalculator() {
                                 <TableCell className="text-right">{formatCurrency(totals.totalOutras)}</TableCell>
                                 <TableCell className="text-right text-red-500">{formatCurrency(totals.totalPIS)}</TableCell>
                                 <TableCell className="text-right text-red-500">{formatCurrency(totals.totalCOFINS)}</TableCell>
-                                <TableCell colSpan={2}></TableCell>
+                                <TableCell colSpan={2} className="text-right">Custo Total Líquido:</TableCell>
                                 <TableCell className="text-right text-primary">{formatCurrency(totals.finalTotalCost)}</TableCell>
+                            </TableRow>
+                             <TableRow className="font-bold bg-muted">
+                                <TableCell colSpan={15} className="text-right">Custo Total (sem crédito PIS/COFINS):</TableCell>
+                                <TableCell className="text-right">{formatCurrency(totalCostWithoutPisCofinsCredit)}</TableCell>
                             </TableRow>
                         </TableFooter>
                     </Table>
