@@ -352,8 +352,8 @@ export function AdvancedCostAnalysisCalculator() {
                                 <TableHead className="text-right">Seguro</TableHead>
                                 <TableHead className="text-right">Desconto</TableHead>
                                 <TableHead className="text-right">Outras</TableHead>
-                                <TableHead className="text-right text-red-500">PIS</TableHead>
-                                <TableHead className="text-right text-red-500">COFINS</TableHead>
+                                <TableHead className="text-right text-green-600">PIS</TableHead>
+                                <TableHead className="text-right text-green-600">COFINS</TableHead>
                                 <TableHead className="text-right text-primary font-bold">C. Un. Final</TableHead>
                                 <TableHead className="text-right text-primary font-bold">C. Un. Final (Conv.)</TableHead>
                                 <TableHead className="text-right text-primary font-bold">C. Total Final</TableHead>
@@ -382,8 +382,8 @@ export function AdvancedCostAnalysisCalculator() {
                                     <TableCell className="text-right">{formatCurrency(item.seguro)}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.desconto)}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.outras)}</TableCell>
-                                    <TableCell className="text-right text-red-500">{formatCurrency(item.pis)}</TableCell>
-                                    <TableCell className="text-right text-red-500">{formatCurrency(item.cofins)}</TableCell>
+                                    <TableCell className="text-right text-green-600">{formatCurrency(item.pis)}</TableCell>
+                                    <TableCell className="text-right text-green-600">{formatCurrency(item.cofins)}</TableCell>
                                     <TableCell className="text-right font-bold">{formatCurrency(item.finalUnitCost, 4)}</TableCell>
                                     <TableCell className="text-right font-bold text-third">{formatCurrency(item.convertedUnitCost, 4)}</TableCell>
                                     <TableCell className="text-right font-bold">{formatCurrency(item.finalTotalCost)}</TableCell>
@@ -400,8 +400,8 @@ export function AdvancedCostAnalysisCalculator() {
                                 <TableCell className="text-right">{formatCurrency(totals.totalSeguro)}</TableCell>
                                 <TableCell className="text-right">{formatCurrency(totals.totalDesconto)}</TableCell>
                                 <TableCell className="text-right">{formatCurrency(totals.totalOutras)}</TableCell>
-                                <TableCell className="text-right text-red-500">{formatCurrency(totals.totalPIS)}</TableCell>
-                                <TableCell className="text-right text-red-500">{formatCurrency(totals.totalCOFINS)}</TableCell>
+                                <TableCell className="text-right text-green-600">{formatCurrency(totals.totalPIS)}</TableCell>
+                                <TableCell className="text-right text-green-600">{formatCurrency(totals.totalCOFINS)}</TableCell>
                                 <TableCell colSpan={2} className="text-right">Custo Total Líquido:</TableCell>
                                 <TableCell className="text-right text-primary">{formatCurrency(totals.finalTotalCost)}</TableCell>
                             </TableRow>
