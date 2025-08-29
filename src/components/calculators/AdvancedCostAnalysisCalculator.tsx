@@ -38,6 +38,7 @@ interface NfeInfo {
     emitterName: string;
     emitterCnpj: string;
     nfeNumber: string;
+    totalGrossValue: number; // Valor bruto, sem descontos
 }
 
 export function AdvancedCostAnalysisCalculator() {
@@ -71,13 +72,6 @@ export function AdvancedCostAnalysisCalculator() {
                     throw new Error("Estrutura do XML da NF-e inválida: <det> ou <ICMSTot> não encontrados.");
                 }
 
-                const newNfeInfo: NfeInfo = {
-                    emitterName: infNFe.emit?.xNome || 'N/A',
-                    emitterCnpj: infNFe.emit?.CNPJ || 'N/A',
-                    nfeNumber: infNFe.ide?.nNF || 'N/A',
-                };
-                setNfeInfo(newNfeInfo);
-                
                 const totalProdValue = parseFloat(total.vProd) || 0;
                 
                 const totalFrete = parseFloat(total.vFrete) || 0;
@@ -87,6 +81,14 @@ export function AdvancedCostAnalysisCalculator() {
                 const totalST = parseFloat(total.vST) || 0;
                 const totalIPI = parseFloat(total.vIPI) || 0;
 
+                const newNfeInfo: NfeInfo = {
+                    emitterName: infNFe.emit?.xNome || 'N/A',
+                    emitterCnpj: infNFe.emit?.CNPJ || 'N/A',
+                    nfeNumber: infNFe.ide?.nNF || 'N/A',
+                    totalGrossValue: totalProdValue + totalFrete + totalSeguro + totalOutras + totalST + totalIPI,
+                };
+                setNfeInfo(newNfeInfo);
+                
                 const newItems: AnalyzedItem[] = dets.map((det: any, index: number) => {
                     const prod = det.prod;
                     const imposto = det.imposto;
@@ -304,10 +306,12 @@ export function AdvancedCostAnalysisCalculator() {
                 </Alert>
                 <div className="p-4 border rounded-lg bg-muted/50 space-y-2">
                     <h3 className="text-lg font-medium">Informações da NF-e</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2 text-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2 text-sm">
                         <div><strong>Emitente:</strong> {nfeInfo.emitterName}</div>
                         <div><strong>CNPJ:</strong> {nfeInfo.emitterCnpj}</div>
                         <div><strong>NF-e Nº:</strong> {nfeInfo.nfeNumber}</div>
+                        <div className="md:col-span-1 lg:col-span-2"><strong>Total Bruto (s/ desc):</strong> <span className="font-bold">{formatCurrency(nfeInfo.totalGrossValue)}</span></div>
+                        <div><strong>Total Líquido:</strong> <span className="font-bold text-primary">{formatCurrency(totals.finalTotalCost)}</span></div>
                     </div>
                 </div>
                 </>
