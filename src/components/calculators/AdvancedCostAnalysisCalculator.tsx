@@ -326,6 +326,7 @@ export function AdvancedCostAnalysisCalculator() {
                                 <TableHead className="text-right">Qtde</TableHead>
                                 <TableHead className="w-[100px]">Fator Conv.</TableHead>
                                 <TableHead className="text-right">C. Un. Orig.</TableHead>
+                                <TableHead className="text-right">C. Total Orig.</TableHead>
                                 <TableHead className="text-right">IPI</TableHead>
                                 <TableHead className="text-right">ICMS-ST</TableHead>
                                 <TableHead className="text-right text-red-500">PIS</TableHead>
@@ -351,6 +352,7 @@ export function AdvancedCostAnalysisCalculator() {
                                         />
                                     </TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.unitCost, 4)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(item.totalCost)}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.ipi)}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.icmsST)}</TableCell>
                                     <TableCell className="text-right text-red-500">{formatCurrency(item.pis)}</TableCell>
@@ -364,6 +366,7 @@ export function AdvancedCostAnalysisCalculator() {
                         <TableFooter>
                             <TableRow className="font-bold bg-muted/50">
                                 <TableCell className="sticky left-0 bg-muted/50 z-10 text-right" colSpan={4}>Totais:</TableCell>
+                                <TableCell className="text-right">{formatCurrency(totals.totalCost)}</TableCell>
                                 <TableCell className="text-right">{formatCurrency(totals.totalIPI)}</TableCell>
                                 <TableCell className="text-right">{formatCurrency(totals.totalST)}</TableCell>
                                 <TableCell className="text-right text-red-500">{formatCurrency(totals.totalPIS)}</TableCell>
